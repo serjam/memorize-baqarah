@@ -1,8 +1,9 @@
-const CACHE_NAME = 'baqarah-v2';
+const CACHE_NAME = 'baqarah-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
+  './quran-data.js',
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
   'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js',

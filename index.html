@@ -526,7 +526,7 @@
         get selectedPage() { return this.selectedIndex !== null ? PAGES[this.selectedIndex] : null; },
         get isSelectedCompleted() { return this.selectedPage ? this.state.pages[this.selectedPage.mushafPage]?.completed || false : false; },
         get completedCount() { return Object.values(this.state.pages).filter(p => p.completed).length; },
-        get currentWeek() { return Math.max(1, Math.min(48, Math.floor((new Date() - new Date(this.state.startDate)) / (7*86400000)) + 1)); },
+        get currentWeek() { return Math.max(1, Math.min(48, Math.floor(daysBetween(localDate(), this.state.startDate) / 7) + 1)); },
         get currentStreak() {
           const log = [...new Set(this.state.dailyLog)].sort().reverse();
           if (!log.length) return 0;
@@ -572,7 +572,7 @@
           const today = localDate();
           const last = log[0];
           if (last === today) return '';
-          const gap = Math.floor((new Date(today) - new Date(last)) / 86400000);
+          const gap = daysBetween(today, last);
           if (gap >= 3 && gap < 14) return 'Every journey has pauses. Pick up where you left off.';
           if (gap >= 14) return 'Welcome back. The best time to continue is now.';
           return '';
@@ -596,14 +596,14 @@
         get mostActiveDay() {
           const counts = [0,0,0,0,0,0,0];
           const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-          this.state.dailyLog.forEach(d => counts[new Date(d).getDay()]++);
+          this.state.dailyLog.forEach(d => counts[new Date(d+'T12:00:00').getDay()]++);
           const max = Math.max(...counts);
           return max > 0 ? names[counts.indexOf(max)] : '—';
         },
         get estimatedCompletion() {
           if (this.completedCount === 0) return 'Start memorizing!';
           if (this.completedCount >= 48) return 'Complete!';
-          const daysSinceStart = Math.max(1, Math.floor((new Date() - new Date(this.state.startDate)) / 86400000));
+          const daysSinceStart = Math.max(1, daysBetween(localDate(), this.state.startDate));
           const rate = this.completedCount / daysSinceStart;
           const remaining = 48 - this.completedCount;
           const daysLeft = Math.ceil(remaining / rate);
@@ -905,7 +905,27 @@
           const b=new Blob([JSON.stringify(this.state,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='baqarah-progress-'+localDate()+'.json';a.click();URL.revokeObjectURL(u);
         },
         importData(e) {
-          const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{this.state=JSON.parse(ev.target.result);this.save();this.showSettings=false;}catch{alert('Invalid backup file');}};r.readAsText(f);
+          const f = e.target.files[0];
+          if (!f) return;
+          const r = new FileReader();
+          r.onload = ev => {
+            try {
+              const data = JSON.parse(ev.target.result);
+              if (!data.pages || !data.startDate || !Array.isArray(data.dailyLog)) {
+                alert('Invalid backup file format.');
+                return;
+              }
+              this.state = data;
+              PAGES.forEach(p => {
+                if (!this.state.pages[p.mushafPage]) {
+                  this.state.pages[p.mushafPage] = { completed: false, listenCount: 0, lastListened: null };
+                }
+              });
+              this.save();
+              this.showSettings = false;
+            } catch { alert('Invalid backup file.'); }
+          };
+          r.readAsText(f);
         },
         resetData() {
           if(confirm('This will erase all progress. Are you sure?')){this.state=getDefaultState();this.save();this.selectedIndex=null;this.playerVisible=false;this.showSettings=false;}

@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#191918" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#FDFCFB" media="(prefers-color-scheme: light)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Memorize Al-Baqarah</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+    }
+  </script>
+  <style>
+    /* Jade Garden — light */
+    :root {
+      --bg: #FDFCFB; --surface: #F9F8F6; --surface2: #F0EFEB;
+      --border: #DAD9D6; --border2: #CFCECA;
+      --text: #21201C; --muted: #63635E;
+      --accent: #29A383; --accent-hover: #26997B;
+      --accent-bg: #E6F7ED; --accent-text: #1B6B51;
+      --gold: #AF934C; --streak: #B45309;
+      --player-bg: rgba(249,248,246,0.95);
+    }
+    /* Jade Garden — dark */
+    .dark {
+      --bg: #111110; --surface: #191918; --surface2: #212120;
+      --border: #2C2C2A; --border2: #3B3A37;
+      --text: #EEEEEC; --muted: #84847E;
+      --accent: #29A383; --accent-hover: #27B08B;
+      --accent-bg: #0F2E22; --accent-text: #70DFC0;
+      --gold: #E3A53E; --streak: #FBBF24;
+      --player-bg: rgba(25,25,24,0.95);
+    }
+    body { background: var(--bg); color: var(--text); transition: background 0.3s, color 0.3s; }
+    [x-cloak] { display: none !important; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes fire-pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.15);opacity:.85} }
+    .fire-pulse { animation: fire-pulse 1.5s ease-in-out infinite; }
+    input[type="range"] { -webkit-appearance:none; appearance:none; height:6px; border-radius:999px; background:var(--border); outline:none; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+    input[type="range"]::-moz-range-thumb { width:16px; height:16px; border:none; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+    input[type="range"]::-moz-range-progress { background:var(--accent); border-radius:999px; }
+    .grid-cell { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+    .grid-cell:hover { transform: scale(1.1); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent); }
+  </style>
+</head>
+
+<body class="font-sans min-h-screen flex flex-col" x-data="app" x-cloak
+  @keydown.space="if (playerVisible && !['INPUT','BUTTON','TEXTAREA','SELECT'].includes($event.target.tagName)) { $event.preventDefault(); togglePlay(); }"
+  @keydown.left="prevPage()"
+  @keydown.right="nextPage()">
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="px-4 py-3 flex items-center justify-between border-b" style="border-color: var(--border);">
+    <div>
+      <h1 class="text-lg font-semibold tracking-tight">Memorize Al-Baqarah</h1>
+      <p class="text-xs" style="color: var(--muted);">A page a week, done in a year</p>
+    </div>
+    <div class="flex items-center gap-1">
+      <!-- Install button (hidden if already installed as PWA) -->
+      <button x-show="!isInstalled" @click="startInstall()"
+        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
+        style="background: var(--accent);">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        Install
+      </button>
+      <!-- Dark mode toggle -->
+      <button @click="toggleDark()" aria-label="Toggle dark mode" class="p-2 rounded-lg transition-colors hover:opacity-70" style="color: var(--muted);">
+        <svg x-show="isDark" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+        <svg x-show="!isDark" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+      </button>
+      <button @click="showSettings = true" aria-label="Settings" class="p-2 rounded-lg transition-colors hover:opacity-70" style="color: var(--muted);">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══ SETTINGS MODAL ═══ -->
+  <div x-show="showSettings" x-transition.opacity class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showSettings = false">
+    <div class="rounded-2xl p-6 w-full max-w-sm border space-y-4" style="background: var(--surface); border-color: var(--border);">
+      <h2 class="text-lg font-semibold">Settings</h2>
+      <div>
+        <label class="text-sm block mb-1" style="color: var(--muted);">Start Date</label>
+        <input type="date" x-model="state.startDate" @change="save()"
+          class="w-full rounded-lg px-3 py-2 text-sm border outline-none"
+          style="background: var(--surface2); border-color: var(--border); color: var(--text);">
+      </div>
+      <div class="flex gap-2">
+        <button @click="exportData()" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium hover:opacity-80" style="background: var(--surface2); color: var(--text);">Export</button>
+        <label class="flex-1 rounded-lg px-4 py-2 text-sm font-medium text-center cursor-pointer hover:opacity-80" style="background: var(--surface2); color: var(--text);">
+          Import <input type="file" accept=".json" @change="importData($event)" class="hidden">
+        </label>
+      </div>
+      <button @click="resetData()" class="w-full rounded-lg px-4 py-2 text-sm font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20">Reset All Progress</button>
+      <button @click="showSettings = false" class="w-full rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--accent);">Done</button>
+    </div>
+  </div>
+
+  <!-- ═══ INSTALL MODAL ═══ -->
+  <div x-show="showInstall" x-transition.opacity class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4" @click.self="showInstall = false">
+    <div class="rounded-2xl p-6 w-full max-w-sm border space-y-4" style="background: var(--surface); border-color: var(--border);">
+      <!-- Downloading state -->
+      <template x-if="installStep === 'downloading'">
+        <div class="space-y-4">
+          <h2 class="text-lg font-semibold">Downloading for offline...</h2>
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs" style="color: var(--muted);">
+              <span x-text="installStatus"></span>
+              <span x-text="installDone + '/' + installTotal"></span>
+            </div>
+            <div class="w-full rounded-full h-2" style="background: var(--border);">
+              <div class="h-2 rounded-full transition-all duration-300"
+                :style="'background:var(--accent);width:' + (installTotal ? Math.round(installDone/installTotal*100) : 0) + '%'"></div>
+            </div>
+            <div class="text-[10px]" style="color: var(--muted);" x-text="installCurrentFile"></div>
+          </div>
+        </div>
+      </template>
+
+      <!-- iOS instructions -->
+      <template x-if="installStep === 'ios'">
+        <div class="space-y-4 text-center">
+          <div class="text-4xl">&#128242;</div>
+          <h2 class="text-lg font-semibold">Add to Home Screen</h2>
+          <p class="text-sm" style="color: var(--muted);">All audio and pages are downloaded. Now save the app to your home screen for the best experience.</p>
+          <div class="rounded-xl p-4 text-left space-y-3" style="background: var(--surface2);">
+            <div class="flex items-center gap-3 text-sm">
+              <span class="text-lg">1.</span>
+              <span>Tap the <strong>Share</strong> button</span>
+              <svg class="w-5 h-5 ml-auto" style="color: var(--accent);" fill="currentColor" viewBox="0 0 20 20"><path d="M15 8a1 1 0 01-1-1V5.414l-4.293 4.293a1 1 0 01-1.414-1.414L12.586 4H11a1 1 0 110-2h4a1 1 0 011 1v4a1 1 0 01-1 1zm-7 4a1 1 0 100 2H3v3h14v-3a1 1 0 112 0v3a2 2 0 01-2 2H3a2 2 0 01-2-2v-3a2 2 0 012-2h5z"/></svg>
+            </div>
+            <div class="flex items-center gap-3 text-sm">
+              <span class="text-lg">2.</span>
+              <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+            </div>
+            <div class="flex items-center gap-3 text-sm">
+              <span class="text-lg">3.</span>
+              <span>Tap <strong>"Add"</strong></span>
+            </div>
+          </div>
+          <button @click="showInstall = false" class="w-full rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--accent);">Got it</button>
+        </div>
+      </template>
+
+      <!-- Chrome/Android — handled natively, just show done -->
+      <template x-if="installStep === 'done'">
+        <div class="space-y-4 text-center">
+          <div class="text-4xl">&#9989;</div>
+          <h2 class="text-lg font-semibold">Ready to go!</h2>
+          <p class="text-sm" style="color: var(--muted);">All content is cached for offline use. Open the app from your home screen anytime.</p>
+          <button @click="showInstall = false" class="w-full rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--accent);">Done</button>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- ═══ CELEBRATION MODAL ═══ -->
+  <div x-show="celebration.show" x-transition.opacity.duration.400ms
+    class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" @click.self="celebration.show = false">
+    <div class="rounded-2xl p-6 w-full max-w-sm border space-y-4 text-center"
+      style="background: var(--surface); border-color: var(--border);"
+      x-show="celebration.show"
+      x-transition:enter="transition ease-out duration-500"
+      x-transition:enter-start="opacity-0 scale-90"
+      x-transition:enter-end="opacity-100 scale-100">
+      <div class="text-5xl" x-html="celebration.emoji"></div>
+      <h2 class="text-xl font-bold" x-text="celebration.title"></h2>
+      <p class="text-sm" style="color: var(--muted);" x-text="celebration.subtitle"></p>
+      <div class="rounded-xl p-3 text-sm italic" style="background: var(--surface2); color: var(--muted);"
+        x-show="celebration.hadith" x-html="celebration.hadith"></div>
+      <div class="flex gap-2">
+        <button x-show="celebration.shareable" @click="shareProgress()" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium border hover:opacity-80"
+          style="border-color: var(--border); color: var(--text);">Share</button>
+        <button @click="celebration.show = false" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white"
+          style="background: var(--accent);" x-text="celebration.button || 'Continue'"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="flex-1 overflow-y-auto scrollbar-hide"
+    :style="playerVisible ? 'padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));' : ''">
+    <div class="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-5">
+
+      <!-- LEFT COLUMN -->
+      <div class="space-y-4">
+
+        <!-- Du'a / Hadith Banner -->
+        <div class="rounded-lg px-3 py-2 text-xs italic flex items-center gap-2"
+          style="background: var(--accent-bg); color: var(--accent-text);"
+          x-show="!isJumuah">
+          <span>&#128214;</span>
+          <span x-text="dailyMotivation"></span>
+        </div>
+        <!-- Jumu'ah Banner (Fridays) -->
+        <div class="rounded-lg px-3 py-2 text-xs flex items-center gap-2"
+          style="background: linear-gradient(135deg, var(--accent-bg), color-mix(in srgb, var(--gold) 15%, var(--accent-bg))); color: var(--accent-text);"
+          x-show="isJumuah">
+          <span>&#127769;</span>
+          <span>Jumu'ah Mubarak — Al-Baqarah is recommended to be recited on Fridays</span>
+        </div>
+
+        <!-- Comeback Message -->
+        <div class="rounded-lg px-3 py-2 text-xs flex items-center gap-2"
+          style="background: var(--surface); border: 1px solid var(--border); color: var(--muted);"
+          x-show="comebackMessage">
+          <span>&#128156;</span>
+          <span x-text="comebackMessage"></span>
+        </div>
+
+        <!-- Stats (2 cards: streak + progress) -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-xl p-3 border" style="background: var(--surface); border-color: var(--border);">
+            <div class="flex items-center gap-1.5 mb-1">
+              <span class="text-base" :class="currentStreak > 0 ? 'fire-pulse' : ''">&#128293;</span>
+              <span class="text-xs font-medium" style="color: var(--muted);">Streak</span>
+            </div>
+            <div class="text-2xl font-bold" style="color: var(--streak);" x-text="currentStreak"></div>
+            <div class="text-[10px]" style="color: var(--muted);" x-text="'Best: ' + longestStreak + 'd'"></div>
+          </div>
+          <div class="rounded-xl p-3 border" style="background: var(--surface); border-color: var(--border);">
+            <div class="flex items-center gap-1.5 mb-1">
+              <span class="text-base">&#128214;</span>
+              <span class="text-xs font-medium" style="color: var(--muted);">Progress</span>
+            </div>
+            <div class="text-2xl font-bold" style="color: var(--accent);" x-text="completedCount + '/48'"></div>
+            <div class="w-full rounded-full h-1.5 mt-1.5" style="background: var(--border);">
+              <div class="h-1.5 rounded-full transition-all duration-700"
+                :style="'background:var(--accent);width:' + Math.round(completedCount/48*100) + '%'"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid (8 cols desktop, 6 cols mobile) -->
+        <div>
+          <h2 class="text-sm font-semibold mb-2" style="color: var(--muted);">Weekly Pages</h2>
+          <div class="grid grid-cols-6 sm:grid-cols-8 gap-1.5">
+            <template x-for="(page, i) in pages" :key="page.mushafPage">
+              <button class="grid-cell aspect-square rounded-lg flex items-center justify-center font-semibold text-xs relative border"
+                :style="gridCellStyle(page, i)" @click="selectPage(i)">
+                <span x-text="i + 1"></span>
+                <template x-if="state.pages[page.mushafPage]?.completed">
+                  <svg class="absolute top-0.5 right-0.5 w-2.5 h-2.5" style="color: var(--accent);" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                  </svg>
+                </template>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Activity Heat Map -->
+        <div>
+          <h2 class="text-sm font-semibold mb-2" style="color: var(--muted);">Activity</h2>
+          <div class="grid gap-[3px]" style="grid-template-columns: repeat(16, 1fr);">
+            <template x-for="day in heatMapDays" :key="day.date">
+              <div class="aspect-square rounded-sm" :title="day.date"
+                :style="day.active ? 'background: var(--accent); opacity:' + (0.3 + day.intensity * 0.7) : 'background: var(--border); opacity: 0.4;'"></div>
+            </template>
+          </div>
+          <div class="flex items-center justify-between mt-1 text-[9px]" style="color: var(--muted);">
+            <span>16 weeks ago</span>
+            <span>Today</span>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="rounded-xl p-3 border space-y-2" style="background: var(--surface); border-color: var(--border);">
+          <h2 class="text-sm font-semibold" style="color: var(--muted);">Insights</h2>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div><span style="color: var(--muted);">Total listens</span><div class="font-semibold" x-text="totalListens"></div></div>
+            <div><span style="color: var(--muted);">Days active</span><div class="font-semibold" x-text="state.dailyLog.length"></div></div>
+            <div><span style="color: var(--muted);">Most active day</span><div class="font-semibold" x-text="mostActiveDay"></div></div>
+            <div><span style="color: var(--muted);">Est. completion</span><div class="font-semibold" x-text="estimatedCompletion"></div></div>
+          </div>
+          <!-- Juz progress -->
+          <div class="space-y-1 pt-1">
+            <template x-for="juz in juzProgress" :key="juz.name">
+              <div class="flex items-center gap-2 text-[10px]">
+                <span class="w-10 font-medium" x-text="juz.name" style="color: var(--muted);"></span>
+                <div class="flex-1 rounded-full h-1.5" style="background: var(--border);">
+                  <div class="h-1.5 rounded-full transition-all duration-500"
+                    :style="'background:var(--accent);width:' + juz.pct + '%'"></div>
+                </div>
+                <span class="w-8 text-right" style="color: var(--muted);" x-text="juz.pct + '%'"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+      </div><!-- /left -->
+
+      <!-- RIGHT COLUMN: Mushaf page -->
+      <div class="lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto scrollbar-hide">
+        <div x-show="selectedIndex !== null" x-transition.opacity>
+          <div class="rounded-xl border overflow-hidden" style="background: var(--surface); border-color: var(--border);">
+            <!-- Single header row: info left, actions right -->
+            <div class="px-4 py-2.5 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold" x-text="'Week ' + (selectedIndex + 1)"></span>
+                <span class="text-xs" style="color: var(--muted);" x-text="selectedPage ? 'Ayah ' + selectedPage.ayahStart + '–' + selectedPage.ayahEnd : ''"></span>
+                <span class="text-xs" style="color: var(--muted);" x-text="(selectedPage ? (state.pages[selectedPage.mushafPage]?.listenCount || 0) : 0) + 'x listened'"></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button @click="togglePlay()" class="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium text-white" style="background: var(--accent);">
+                  <svg x-show="!isPlaying || !playerVisible" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                  <svg x-show="isPlaying && playerVisible" class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                  <span x-text="isPlaying && playerVisible ? 'Pause' : 'Listen'"></span>
+                </button>
+                <button @click="toggleCompleted()"
+                  class="px-3 py-1 rounded-lg text-xs font-medium border transition-all"
+                  :style="isSelectedCompleted
+                    ? 'background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent);'
+                    : 'background:var(--surface2);color:var(--muted);border-color:var(--border);'"
+                  x-text="isSelectedCompleted ? 'Memorized \u2713' : 'Mark Done'"></button>
+              </div>
+            </div>
+
+            <!-- Mushaf Image -->
+            <div class="flex justify-center" style="background: var(--surface2);">
+              <img
+                :src="'https://www.mp3quran.net/api/quran_pages_arabic/' + String(selectedPage?.mushafPage).padStart(3,'0') + '.png'"
+                :alt="'Mushaf Page ' + selectedPage?.mushafPage"
+                class="w-auto h-[960px] max-h-[calc(100vh-10rem)] rounded"
+                crossorigin="anonymous"
+                loading="lazy">
+            </div>
+          </div>
+        </div>
+      </div><!-- /right -->
+
+    </div>
+  </main>
+
+  <!-- ═══ AUDIO PLAYER (fixed bottom) ═══ -->
+  <div class="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t z-40"
+    style="background: var(--player-bg); border-color: var(--border); padding-bottom: env(safe-area-inset-bottom, 0px);"
+    x-show="playerVisible"
+    x-transition:enter="transition ease-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+    x-transition:leave="transition ease-in duration-200" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+    <!-- Seek bar -->
+    <div class="px-4 pt-2">
+      <input type="range" min="0" step="0.1"
+        :max="audioDuration || 1"
+        x-effect="if (!isSeeking) $el.value = audioCurrentTime"
+        @input="onSeekInput($event)"
+        @change="onSeekCommit($event)"
+        @pointerdown="isSeeking = true"
+        @pointerup="isSeeking = false"
+        @touchstart="isSeeking = true"
+        @touchend="isSeeking = false"
+        class="w-full h-2 rounded-full appearance-none cursor-pointer"
+        style="background: var(--border); accent-color: var(--accent);">
+    </div>
+    <div class="max-w-3xl mx-auto px-4 py-2 flex items-center gap-3">
+      <!-- Track info -->
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-medium truncate" x-text="selectedPage ? 'Week ' + (selectedIndex+1) + ' — Ayah ' + selectedPage.ayahStart + '–' + selectedPage.ayahEnd : ''"></div>
+        <div class="text-[10px]" style="color: var(--muted);" x-text="formatTime(audioCurrentTime) + ' / ' + formatTime(audioDuration)"></div>
+      </div>
+      <!-- Controls -->
+      <div class="flex items-center gap-1.5">
+        <!-- Speed -->
+        <button @click="cycleSpeed()" class="px-1.5 py-0.5 rounded text-[10px] font-bold min-w-[2.5rem] text-center border"
+          style="border-color: var(--border); color: var(--muted);"
+          x-text="playbackSpeed + 'x'"></button>
+        <!-- Prev -->
+        <button @click="prevPage()" aria-label="Previous page" class="p-1.5 rounded-full hover:opacity-70" :style="selectedIndex <= 0 ? 'color:var(--border2)' : 'color:var(--muted)'">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M8.445 14.832A1 1 0 0010 14v-2.798l5.445 3.63A1 1 0 0017 14V6a1 1 0 00-1.555-.832L10 8.798V6a1 1 0 00-1.555-.832l-6 4a1 1 0 000 1.664l6 4z"/></svg>
+        </button>
+        <!-- Play/Pause -->
+        <button @click="togglePlay()" :aria-label="isPlaying ? 'Pause' : 'Play'" class="p-2.5 rounded-full text-white" style="background: var(--accent);">
+          <svg x-show="!isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+          <svg x-show="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+        </button>
+        <!-- Next -->
+        <button @click="nextPage()" aria-label="Next page" class="p-1.5 rounded-full hover:opacity-70" :style="selectedIndex >= 47 ? 'color:var(--border2)' : 'color:var(--muted)'">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M4.555 5.168A1 1 0 003 6v8a1 1 0 001.555.832L10 11.202V14a1 1 0 001.555.832l6-4a1 1 0 000-1.664l-6-4A1 1 0 0010 6v2.798L4.555 5.168z"/></svg>
+        </button>
+        <!-- Loop -->
+        <button @click="looping = !looping" :aria-label="looping ? 'Disable loop' : 'Enable loop'" class="p-1.5 rounded-full hover:opacity-70"
+          :style="looping ? 'color:var(--accent)' : 'color:var(--muted)'">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <audio x-ref="audio"
+    @timeupdate="onTimeUpdate()"
+    @ended="onAudioEnded()"
+    @loadedmetadata="onMetadataLoaded()"
+    @durationchange="onDurationChange()"></audio>
+
+  <script>
+    const PAGES = [
+      { mushafPage: 2, ayahStart: 1, ayahEnd: 5, file: 'audio/page_002_ayah_1-5.mp3' },
+      { mushafPage: 3, ayahStart: 6, ayahEnd: 16, file: 'audio/page_003_ayah_6-16.mp3' },
+      { mushafPage: 4, ayahStart: 17, ayahEnd: 24, file: 'audio/page_004_ayah_17-24.mp3' },
+      { mushafPage: 5, ayahStart: 25, ayahEnd: 29, file: 'audio/page_005_ayah_25-29.mp3' },
+      { mushafPage: 6, ayahStart: 30, ayahEnd: 37, file: 'audio/page_006_ayah_30-37.mp3' },
+      { mushafPage: 7, ayahStart: 38, ayahEnd: 48, file: 'audio/page_007_ayah_38-48.mp3' },
+      { mushafPage: 8, ayahStart: 49, ayahEnd: 57, file: 'audio/page_008_ayah_49-57.mp3' },
+      { mushafPage: 9, ayahStart: 58, ayahEnd: 61, file: 'audio/page_009_ayah_58-61.mp3' },
+      { mushafPage: 10, ayahStart: 62, ayahEnd: 69, file: 'audio/page_010_ayah_62-69.mp3' },
+      { mushafPage: 11, ayahStart: 70, ayahEnd: 76, file: 'audio/page_011_ayah_70-76.mp3' },
+      { mushafPage: 12, ayahStart: 77, ayahEnd: 83, file: 'audio/page_012_ayah_77-83.mp3' },
+      { mushafPage: 13, ayahStart: 84, ayahEnd: 88, file: 'audio/page_013_ayah_84-88.mp3' },
+      { mushafPage: 14, ayahStart: 89, ayahEnd: 93, file: 'audio/page_014_ayah_89-93.mp3' },
+      { mushafPage: 15, ayahStart: 94, ayahEnd: 101, file: 'audio/page_015_ayah_94-101.mp3' },
+      { mushafPage: 16, ayahStart: 102, ayahEnd: 105, file: 'audio/page_016_ayah_102-105.mp3' },
+      { mushafPage: 17, ayahStart: 106, ayahEnd: 112, file: 'audio/page_017_ayah_106-112.mp3' },
+      { mushafPage: 18, ayahStart: 113, ayahEnd: 119, file: 'audio/page_018_ayah_113-119.mp3' },
+      { mushafPage: 19, ayahStart: 120, ayahEnd: 126, file: 'audio/page_019_ayah_120-126.mp3' },
+      { mushafPage: 20, ayahStart: 127, ayahEnd: 134, file: 'audio/page_020_ayah_127-134.mp3' },
+      { mushafPage: 21, ayahStart: 135, ayahEnd: 141, file: 'audio/page_021_ayah_135-141.mp3' },
+      { mushafPage: 22, ayahStart: 142, ayahEnd: 145, file: 'audio/page_022_ayah_142-145.mp3' },
+      { mushafPage: 23, ayahStart: 146, ayahEnd: 153, file: 'audio/page_023_ayah_146-153.mp3' },
+      { mushafPage: 24, ayahStart: 154, ayahEnd: 163, file: 'audio/page_024_ayah_154-163.mp3' },
+      { mushafPage: 25, ayahStart: 164, ayahEnd: 169, file: 'audio/page_025_ayah_164-169.mp3' },
+      { mushafPage: 26, ayahStart: 170, ayahEnd: 176, file: 'audio/page_026_ayah_170-176.mp3' },
+      { mushafPage: 27, ayahStart: 177, ayahEnd: 181, file: 'audio/page_027_ayah_177-181.mp3' },
+      { mushafPage: 28, ayahStart: 182, ayahEnd: 186, file: 'audio/page_028_ayah_182-186.mp3' },
+      { mushafPage: 29, ayahStart: 187, ayahEnd: 190, file: 'audio/page_029_ayah_187-190.mp3' },
+      { mushafPage: 30, ayahStart: 191, ayahEnd: 196, file: 'audio/page_030_ayah_191-196.mp3' },
+      { mushafPage: 31, ayahStart: 197, ayahEnd: 202, file: 'audio/page_031_ayah_197-202.mp3' },
+      { mushafPage: 32, ayahStart: 203, ayahEnd: 210, file: 'audio/page_032_ayah_203-210.mp3' },
+      { mushafPage: 33, ayahStart: 211, ayahEnd: 215, file: 'audio/page_033_ayah_211-215.mp3' },
+      { mushafPage: 34, ayahStart: 216, ayahEnd: 219, file: 'audio/page_034_ayah_216-219.mp3' },
+      { mushafPage: 35, ayahStart: 220, ayahEnd: 224, file: 'audio/page_035_ayah_220-224.mp3' },
+      { mushafPage: 36, ayahStart: 225, ayahEnd: 230, file: 'audio/page_036_ayah_225-230.mp3' },
+      { mushafPage: 37, ayahStart: 231, ayahEnd: 233, file: 'audio/page_037_ayah_231-233.mp3' },
+      { mushafPage: 38, ayahStart: 234, ayahEnd: 237, file: 'audio/page_038_ayah_234-237.mp3' },
+      { mushafPage: 39, ayahStart: 238, ayahEnd: 245, file: 'audio/page_039_ayah_238-245.mp3' },
+      { mushafPage: 40, ayahStart: 246, ayahEnd: 248, file: 'audio/page_040_ayah_246-248.mp3' },
+      { mushafPage: 41, ayahStart: 249, ayahEnd: 252, file: 'audio/page_041_ayah_249-252.mp3' },
+      { mushafPage: 42, ayahStart: 253, ayahEnd: 256, file: 'audio/page_042_ayah_253-256.mp3' },
+      { mushafPage: 43, ayahStart: 257, ayahEnd: 259, file: 'audio/page_043_ayah_257-259.mp3' },
+      { mushafPage: 44, ayahStart: 260, ayahEnd: 264, file: 'audio/page_044_ayah_260-264.mp3' },
+      { mushafPage: 45, ayahStart: 265, ayahEnd: 269, file: 'audio/page_045_ayah_265-269.mp3' },
+      { mushafPage: 46, ayahStart: 270, ayahEnd: 274, file: 'audio/page_046_ayah_270-274.mp3' },
+      { mushafPage: 47, ayahStart: 275, ayahEnd: 281, file: 'audio/page_047_ayah_275-281.mp3' },
+      { mushafPage: 48, ayahStart: 282, ayahEnd: 282, file: 'audio/page_048_ayah_282-282.mp3' },
+      { mushafPage: 49, ayahStart: 283, ayahEnd: 286, file: 'audio/page_049_ayah_283-286.mp3' },
+    ];
+
+    // Local date string (not UTC) to fix streak/heatmap across timezones
+    function localDate(d = new Date()) {
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    // DST-safe day difference using UTC-forced parsing
+    function daysBetween(a, b) {
+      return Math.round((new Date(a+'T00:00:00Z') - new Date(b+'T00:00:00Z')) / 86400000);
+    }
+
+    function getDefaultState() {
+      const pages = {};
+      PAGES.forEach(p => { pages[p.mushafPage] = { completed: false, listenCount: 0, lastListened: null }; });
+      return { startDate: localDate(), pages, dailyLog: [] };
+    }
+    function loadState() {
+      try {
+        const raw = localStorage.getItem('baqarah-state');
+        if (raw) {
+          const s = JSON.parse(raw);
+          PAGES.forEach(p => { if (!s.pages[p.mushafPage]) s.pages[p.mushafPage] = { completed: false, listenCount: 0, lastListened: null }; });
+          if (!s.dailyLog) s.dailyLog = [];
+          return s;
+        }
+      } catch (e) {}
+      return getDefaultState();
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('app', () => ({
+        state: loadState(),
+        pages: PAGES,
+        selectedIndex: null,
+        showSettings: false,
+        isPlaying: false,
+        playerVisible: false,
+        audioProgress: 0,
+        audioCurrentTime: 0,
+        audioDuration: 0,
+        looping: false,
+        playbackSpeed: 1,
+        isSeeking: false,
+        _pendingSeek: null,
+        isDark: localStorage.getItem('baqarah-dark') === 'true' || (!localStorage.getItem('baqarah-dark') && window.matchMedia('(prefers-color-scheme: dark)').matches),
+        isInstalled: window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
+        deferredPrompt: null,
+        showInstall: false,
+        installStep: '',
+        installStatus: '',
+        installDone: 0,
+        installTotal: 0,
+        installCurrentFile: '',
+        celebration: { show: false, emoji: '', title: '', subtitle: '', hadith: '', button: '', shareable: false, tier: 'gentle' },
+        shownCelebrations: JSON.parse(localStorage.getItem('baqarah-celebrations') || '[]'),
+
+        gridCellStyle(page, i) {
+          const done = this.state.pages[page.mushafPage]?.completed;
+          const cur = i + 1 === this.currentWeek;
+          const sel = this.selectedIndex === i;
+          if (sel) return 'background:var(--accent);color:white;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg);';
+          if (done) return 'background:var(--accent-bg);color:var(--accent-text);border-color:color-mix(in srgb,var(--accent) 30%,transparent);';
+          if (cur) return 'background:var(--accent-bg);color:var(--accent-text);border-color:color-mix(in srgb,var(--accent) 40%,transparent);';
+          return 'background:var(--surface);color:var(--muted);border-color:var(--border);';
+        },
+
+        get selectedPage() { return this.selectedIndex !== null ? PAGES[this.selectedIndex] : null; },
+        get isSelectedCompleted() { return this.selectedPage ? this.state.pages[this.selectedPage.mushafPage]?.completed || false : false; },
+        get completedCount() { return Object.values(this.state.pages).filter(p => p.completed).length; },
+        get currentWeek() { return Math.max(1, Math.min(48, Math.floor((new Date() - new Date(this.state.startDate)) / (7*86400000)) + 1)); },
+        get currentStreak() {
+          const log = [...new Set(this.state.dailyLog)].sort().reverse();
+          if (!log.length) return 0;
+          const today = localDate();
+          const yesterday = localDate(new Date(Date.now() - 86400000));
+          if (log[0] !== today && log[0] !== yesterday) return 0;
+          let s = 1;
+          for (let i = 1; i < log.length; i++) { if (daysBetween(log[i-1], log[i]) === 1) s++; else break; }
+          return s;
+        },
+        get longestStreak() {
+          const log = [...new Set(this.state.dailyLog)].sort();
+          if (!log.length) return 0;
+          let best = 1, cur = 1;
+          for (let i = 1; i < log.length; i++) { if (daysBetween(log[i], log[i-1]) === 1) { cur++; best = Math.max(best, cur); } else cur = 1; }
+          return best;
+        },
+
+        // ── Motivational content ──
+        get dailyMotivation() {
+          const pool = [
+            '"Rabbi zidni ilma" — My Lord, increase me in knowledge (20:114)',
+            '"The best of you are those who learn the Quran and teach it." — Bukhari',
+            '"Whoever recites Surah Al-Baqarah, the Shaytan does not enter his house for three nights." — Muslim',
+            '"The Quran will come as an intercessor on the Day of Judgment." — Muslim',
+            '"Read the Quran, for it will come as an intercessor for its companions." — Muslim',
+            '"Take on only as much as you can do of good deeds, for the best of deeds is that which is done consistently." — Ibn Majah',
+            '"The one who is proficient in Quran will be with the noble angels." — Bukhari & Muslim',
+            'Slow progress is still progress. The Quran was revealed over 23 years.',
+            '"Allah does not burden a soul beyond that it can bear." (2:286)',
+            '"So remember Me; I will remember you." (2:152)',
+            '"Our Lord, do not let our hearts deviate after You have guided us." (3:8)',
+            '"And We have certainly made the Quran easy to remember. So is there any who will remember?" (54:17)',
+          ];
+          return pool[Math.floor(new Date().getDate() * 7 + new Date().getMonth()) % pool.length];
+        },
+
+        get isJumuah() { return new Date().getDay() === 5; },
+
+        get comebackMessage() {
+          const log = [...new Set(this.state.dailyLog)].sort().reverse();
+          if (!log.length) return '';
+          const today = localDate();
+          const last = log[0];
+          if (last === today) return '';
+          const gap = Math.floor((new Date(today) - new Date(last)) / 86400000);
+          if (gap >= 3 && gap < 14) return 'Every journey has pauses. Pick up where you left off.';
+          if (gap >= 14) return 'Welcome back. The best time to continue is now.';
+          return '';
+        },
+
+        // ── Heat map (past 112 days = 16 weeks) ──
+        get heatMapDays() {
+          const logSet = new Set(this.state.dailyLog);
+          const days = [];
+          for (let i = 111; i >= 0; i--) {
+            const d = localDate(new Date(Date.now() - i * 86400000));
+            days.push({ date: d, active: logSet.has(d), intensity: logSet.has(d) ? 1 : 0 });
+          }
+          return days;
+        },
+
+        // ── Stats ──
+        get totalListens() {
+          return Object.values(this.state.pages).reduce((sum, p) => sum + (p.listenCount || 0), 0);
+        },
+        get mostActiveDay() {
+          const counts = [0,0,0,0,0,0,0];
+          const names = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          this.state.dailyLog.forEach(d => counts[new Date(d).getDay()]++);
+          const max = Math.max(...counts);
+          return max > 0 ? names[counts.indexOf(max)] : '—';
+        },
+        get estimatedCompletion() {
+          if (this.completedCount === 0) return 'Start memorizing!';
+          if (this.completedCount >= 48) return 'Complete!';
+          const daysSinceStart = Math.max(1, Math.floor((new Date() - new Date(this.state.startDate)) / 86400000));
+          const rate = this.completedCount / daysSinceStart;
+          const remaining = 48 - this.completedCount;
+          const daysLeft = Math.ceil(remaining / rate);
+          const est = new Date(Date.now() + daysLeft * 86400000);
+          return est.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        },
+        get juzProgress() {
+          // Juz 1: pages 1-21 (mushaf 2-22), Juz 2: pages 22-40 (mushaf 23-41), Juz 3: pages 41-48 (mushaf 42-49)
+          const juz = [
+            { name: 'Juz 1', pages: PAGES.filter((_,i) => i < 20), },
+            { name: 'Juz 2', pages: PAGES.filter((_,i) => i >= 20 && i < 40), },
+            { name: 'Juz 3', pages: PAGES.filter((_,i) => i >= 40), },
+          ];
+          return juz.map(j => {
+            const done = j.pages.filter(p => this.state.pages[p.mushafPage]?.completed).length;
+            return { name: j.name, pct: Math.round(done / j.pages.length * 100) };
+          });
+        },
+
+        // ── Ayah Easter Eggs ──
+        getEasterEgg(mushafPage) {
+          const eggs = {
+            2: 'The opening of Al-Baqarah — Alif Lam Mim. Your journey has begun.',
+            5: "You've memorized the story of Adam (AS) — the first story in the Quran.",
+            29: "You've reached the ayahs of Hajj — a milestone in the middle of the surah.",
+            39: 'The story of Talut and Jalut (Saul & Goliath) — one of the most dramatic narratives in the Quran.',
+            42: "You've memorized Ayat al-Kursi — the greatest ayah in the Quran.",
+            48: 'Ayah 282 — the longest ayah in the entire Quran. You memorized the whole thing.',
+            49: 'The final ayahs of Al-Baqarah — the Prophet (PBUH) said these two verses are sufficient for whoever recites them at night.',
+          };
+          return eggs[mushafPage] || null;
+        },
+
+        // ── Celebration system ──
+        celebrate(emoji, title, subtitle, hadith, tier, shareable, button, dedupKey) {
+          if (dedupKey && this.shownCelebrations.includes(dedupKey)) return;
+          this.celebration = { show: true, emoji, title, subtitle, hadith: hadith || '', button: button || 'Continue', shareable: !!shareable, tier };
+          this.$nextTick(() => this.fireConfetti(tier));
+          if (navigator.vibrate) navigator.vibrate(tier === 'epic' ? [50,30,50,30,80] : tier === 'grand' ? [50,30,50] : [50]);
+          if (dedupKey) { this.shownCelebrations.push(dedupKey); localStorage.setItem('baqarah-celebrations', JSON.stringify(this.shownCelebrations)); }
+        },
+
+        fireConfetti(tier) {
+          if (typeof confetti !== 'function') return;
+          const colors = ['#29A383', '#E3A53E', '#ffffff'];
+          if (tier === 'gentle') {
+            confetti({ particleCount: 30, spread: 60, origin: { y: 0.7 }, colors, gravity: 0.8 });
+          } else if (tier === 'warm') {
+            confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 }, colors });
+            confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 }, colors });
+          } else if (tier === 'grand') {
+            [0, 300, 600].forEach(delay => setTimeout(() => {
+              confetti({ particleCount: 40, angle: 60, spread: 55, origin: { x: 0 }, colors });
+              confetti({ particleCount: 40, angle: 120, spread: 55, origin: { x: 1 }, colors });
+            }, delay));
+          } else if (tier === 'epic') {
+            const end = Date.now() + 4000;
+            (function frame() {
+              confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.6 }, colors: ['#29A383','#E3A53E','#ec4899','#8b5cf6','#fff'] });
+              confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.6 }, colors: ['#29A383','#E3A53E','#ec4899','#8b5cf6','#fff'] });
+              if (Date.now() < end) requestAnimationFrame(frame);
+            })();
+          }
+        },
+
+        checkCelebrations(prevCount) {
+          const count = this.completedCount;
+          const page = this.selectedPage;
+          if (!page) return;
+
+          // First page
+          if (prevCount === 0 && count === 1) {
+            return this.celebrate('&#127793;', 'Your journey has begun',
+              'Page 1 of 48 memorized',
+              '"Whoever recites Surah Al-Baqarah, the Shaytan does not enter his house for three nights." — Sahih Muslim',
+              'gentle', false, 'Continue this blessed path', 'first-page');
+          }
+
+          // Last page
+          if (count === 48) {
+            return this.celebrate('&#127775;', 'Alhamdulillah',
+              'You have memorized Surah Al-Baqarah. 286 ayahs. 48 pages. One extraordinary journey.',
+              '"Read the Quran, for it will come as an intercessor for its companions on the Day of Resurrection." — Sahih Muslim',
+              'epic', true, 'Share your achievement', 'surah-complete');
+          }
+
+          // Ayat al-Kursi (mushaf page 42)
+          if (page.mushafPage === 42) {
+            return this.celebrate('&#11088;', "You've memorized Ayat al-Kursi",
+              'The greatest ayah in the Quran',
+              '"Whoever recites it after every prescribed prayer, nothing will prevent him from entering Paradise except death." — An-Nasa\'i',
+              'warm', true, null, 'ayat-kursi');
+          }
+
+          // Juz milestones — simplified: check if all pages in each Juz are now complete
+          const juz1Done = PAGES.slice(0, 20).every(p => this.state.pages[p.mushafPage]?.completed);
+          const juz2Done = PAGES.slice(20, 40).every(p => this.state.pages[p.mushafPage]?.completed);
+          if (juz1Done && juz2Done) {
+            return this.celebrate('&#128305;', 'Juz 2 Complete',
+              'Two-thirds of Al-Baqarah is in your heart',
+              '"And We have certainly made the Quran easy to remember." (54:17)',
+              'grand', true, null, 'juz2');
+          }
+          if (juz1Done) {
+            return this.celebrate('&#128305;', 'Juz 1 Complete',
+              "You've memorized one-third of Al-Baqarah",
+              '"The Quran will come as an intercessor on the Day of Judgment." — Sahih Muslim',
+              'grand', true, null, 'juz1');
+          }
+
+          // Halfway
+          if (prevCount < 24 && count >= 24) {
+            return this.celebrate('&#127775;', 'Halfway There',
+              '24 of 48 pages memorized — roughly 6 months of dedication',
+              null, 'warm', true, null, 'halfway');
+          }
+
+          // Easter egg for this page
+          const egg = this.getEasterEgg(page.mushafPage);
+          if (egg) {
+            return this.celebrate('&#128216;', 'Week ' + (this.selectedIndex + 1) + ' Complete', egg, null, 'gentle', false);
+          }
+
+          // Generic weekly completion
+          this.celebrate('&#9989;', 'Page Memorized',
+            count + ' of 48 pages complete',
+            null, 'gentle', false);
+        },
+
+        checkStreakCelebrations() {
+          const s = this.currentStreak;
+          const milestones = { 7: ['&#128293;', 'One week strong', 'You\'ve practiced 7 days in a row.', 'gentle'],
+            30: ['&#128293;', 'A month of dedication', '30 consecutive days!', 'warm'],
+            60: ['&#128293;', 'Two months!', '60 days of consistency — remarkable.', 'warm'],
+            100: ['&#128170;', '100 Days', "You've built a habit that will last a lifetime.", 'grand'],
+            200: ['&#11088;', '200 Days!', 'Extraordinary perseverance.', 'grand'],
+            365: ['&#128081;', 'One Full Year', '"The best of deeds is that which is done consistently, even if small." — Ibn Majah', 'epic'] };
+          const m = milestones[s];
+          if (m) this.celebrate(m[0], m[1], m[2], s >= 30 ? m[2] : null, m[3], s >= 100);
+        },
+
+        // ── Share ──
+        async shareProgress() {
+          const text = `Memorizing Surah Al-Baqarah — ${this.completedCount}/48 pages complete!`;
+          if (navigator.share) {
+            try { await navigator.share({ title: 'Memorize Al-Baqarah', text }); } catch {}
+          } else {
+            navigator.clipboard?.writeText(text);
+            alert('Progress copied to clipboard!');
+          }
+        },
+
+        save() { localStorage.setItem('baqarah-state', JSON.stringify(this.state)); },
+        toggleDark() { this.isDark = !this.isDark; localStorage.setItem('baqarah-dark', this.isDark); document.documentElement.classList.toggle('dark', this.isDark); },
+
+        async startInstall() {
+          this.showInstall = true;
+          this.installStep = 'downloading';
+          this.installDone = 0;
+
+          // Cache mushaf images (~16MB) + current week's audio. Rest caches on-play.
+          const imageFiles = PAGES.map(p => 'https://www.mp3quran.net/api/quran_pages_arabic/' + String(p.mushafPage).padStart(3, '0') + '.png');
+          const nearbyAudio = PAGES.slice(Math.max(0, this.currentWeek - 2), this.currentWeek + 2).map(p => p.file);
+          const allFiles = [...imageFiles, ...nearbyAudio];
+          this.installTotal = allFiles.length;
+
+          // Open the cache
+          const cache = await caches.open('baqarah-v2');
+
+          // Download in batches of 4 to avoid overwhelming the connection
+          for (let i = 0; i < allFiles.length; i += 4) {
+            const batch = allFiles.slice(i, i + 4);
+            await Promise.all(batch.map(async (url) => {
+              this.installCurrentFile = url.split('/').pop();
+              try {
+                const cached = await cache.match(url);
+                if (!cached) {
+                  const resp = await fetch(url);
+                  if (resp.ok) await cache.put(url, resp);
+                }
+              } catch (e) { /* skip failures, don't block */ }
+              this.installDone++;
+              this.installStatus = Math.round(this.installDone / this.installTotal * 100) + '%';
+            }));
+          }
+
+          // Now trigger install or show instructions
+          if (this.deferredPrompt) {
+            // Chrome/Android — trigger native install
+            this.deferredPrompt.prompt();
+            const { outcome } = await this.deferredPrompt.userChoice;
+            this.deferredPrompt = null;
+            this.installStep = 'done';
+          } else if (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+            // iOS
+            this.installStep = 'ios';
+          } else {
+            // Desktop or unsupported — just show done
+            this.installStep = 'done';
+          }
+        },
+
+        selectPage(i) {
+          this.selectedIndex = i;
+          this.isPlaying = false;
+          this.audioProgress = 0;
+          this.audioCurrentTime = 0;
+          this.audioDuration = 0;
+          this.isSeeking = false;
+          this._pendingSeek = null;
+          const audio = this.$refs.audio;
+          audio.src = PAGES[i].file;
+          audio.load();
+        },
+        togglePlay() {
+          if (!this.selectedPage) return;
+          const a = this.$refs.audio;
+          if (a.paused) { a.play(); this.isPlaying = true; this.playerVisible = true; this.logToday(); }
+          else { a.pause(); this.isPlaying = false; }
+        },
+        onTimeUpdate() {
+          if (this.isSeeking) return;
+          const a = this.$refs.audio;
+          this.audioCurrentTime = a.currentTime;
+          this.audioProgress = this.audioDuration ? (a.currentTime / this.audioDuration) * 100 : 0;
+        },
+        onMetadataLoaded() {
+          const a = this.$refs.audio;
+          if (a.duration && isFinite(a.duration)) {
+            this.audioDuration = a.duration;
+          }
+          // Apply any seek that was requested before metadata was ready
+          if (this._pendingSeek !== null && this.audioDuration > 0) {
+            a.currentTime = Math.min(this._pendingSeek, this.audioDuration);
+            this.audioCurrentTime = a.currentTime;
+            this._pendingSeek = null;
+          }
+        },
+        onDurationChange() {
+          const a = this.$refs.audio;
+          if (a.duration && isFinite(a.duration)) {
+            this.audioDuration = a.duration;
+          }
+        },
+        onSeekInput(event) {
+          // Live visual feedback while dragging — update the displayed time
+          // but do NOT set audio.currentTime yet (that happens on commit)
+          const v = parseFloat(event.target.value);
+          this.audioCurrentTime = v;
+          this.audioProgress = this.audioDuration ? (v / this.audioDuration) * 100 : 0;
+        },
+        onSeekCommit(event) {
+          const v = parseFloat(event.target.value);
+          const a = this.$refs.audio;
+          if (a.duration && isFinite(a.duration) && a.duration > 0) {
+            // Audio is ready — seek immediately
+            a.currentTime = Math.min(v, a.duration);
+            this.audioCurrentTime = a.currentTime;
+          } else {
+            // Audio not ready yet — queue the seek for when metadata arrives
+            this._pendingSeek = v;
+          }
+          this.isSeeking = false;
+        },
+        onAudioEnded() {
+          if (this.selectedPage) { const pg = this.state.pages[this.selectedPage.mushafPage]; pg.listenCount++; pg.lastListened = localDate(); this.save(); }
+          if (this.looping) { this.$refs.audio.currentTime = 0; this.$refs.audio.play(); return; }
+          this.isPlaying = false;
+        },
+        cycleSpeed() {
+          const speeds = [0.75, 1, 1.25, 1.5];
+          const idx = (speeds.indexOf(this.playbackSpeed) + 1) % speeds.length;
+          this.playbackSpeed = speeds[idx];
+          this.$refs.audio.playbackRate = this.playbackSpeed;
+        },
+        prevPage() { if (this.selectedIndex > 0) this.selectPage(this.selectedIndex - 1); },
+        nextPage() { if (this.selectedIndex < 47) this.selectPage(this.selectedIndex + 1); },
+        toggleCompleted() {
+          if (!this.selectedPage) return;
+          const prevCount = this.completedCount;
+          const pg = this.state.pages[this.selectedPage.mushafPage];
+          pg.completed = !pg.completed;
+          this.save();
+          if (pg.completed) {
+            if (navigator.vibrate) navigator.vibrate(50);
+            this.checkCelebrations(prevCount);
+          }
+        },
+        logToday() {
+          const t = localDate();
+          if (!this.state.dailyLog.includes(t)) {
+            this.state.dailyLog.push(t); this.save();
+            this.$nextTick(() => this.checkStreakCelebrations());
+          }
+        },
+        formatTime(s) { if (!s||isNaN(s)) return '0:00'; return Math.floor(s/60)+':'+(Math.floor(s%60)<10?'0':'')+Math.floor(s%60); },
+        formatDate(d) { return d ? new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : ''; },
+        exportData() {
+          const b=new Blob([JSON.stringify(this.state,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='baqarah-progress-'+localDate()+'.json';a.click();URL.revokeObjectURL(u);
+        },
+        importData(e) {
+          const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{this.state=JSON.parse(ev.target.result);this.save();this.showSettings=false;}catch{alert('Invalid backup file');}};r.readAsText(f);
+        },
+        resetData() {
+          if(confirm('This will erase all progress. Are you sure?')){this.state=getDefaultState();this.save();this.selectedIndex=null;this.playerVisible=false;this.showSettings=false;}
+        },
+        init() {
+          document.documentElement.classList.toggle('dark', this.isDark);
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (!localStorage.getItem('baqarah-dark')) { this.isDark = e.matches; document.documentElement.classList.toggle('dark', this.isDark); }
+          });
+          // Capture Chrome install prompt
+          window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); this.deferredPrompt = e; });
+          window.addEventListener('appinstalled', () => { this.isInstalled = true; });
+          if (navigator.storage?.persist) navigator.storage.persist();
+          this.selectPage(this.currentWeek - 1);
+          // Year anniversary check
+          const daysSinceStart = Math.floor((new Date() - new Date(this.state.startDate)) / 86400000);
+          const shownAnniversary = localStorage.getItem('baqarah-anniversary');
+          if (daysSinceStart >= 365 && this.state.dailyLog.length > 30 && shownAnniversary !== 'true') {
+            localStorage.setItem('baqarah-anniversary', 'true');
+            setTimeout(() => this.celebrate('&#127775;', 'One Year With Al-Baqarah',
+              'You started this journey on ' + new Date(this.state.startDate).toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'}) + '. The fact that you\'re still here is what matters.',
+              null, 'epic', true), 1000);
+          }
+        }
+      }));
+    });
+  </script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+</body>
+</html>

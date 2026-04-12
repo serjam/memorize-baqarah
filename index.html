@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#191918" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#FDFCFB" media="(prefers-color-scheme: light)">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Memorize Al-Baqarah</title>
   <link rel="icon" type="image/x-icon" href="icons/favicon.ico">
@@ -616,11 +616,12 @@
     </div>
   </div>
 
-  <audio x-ref="audio" preload="metadata"
+  <audio x-ref="audio" preload="auto"
     @timeupdate="onTimeUpdate()"
     @ended="onAudioEnded()"
     @loadedmetadata="onMetadataLoaded()"
-    @durationchange="onDurationChange()"></audio>
+    @durationchange="onDurationChange()"
+    ></audio>
 
   <script>
     const PAGES = [
@@ -791,7 +792,6 @@
         get playbackSpeed() { return this.state.preferences.playbackSpeed; },
         set playbackSpeed(v) { this.state.preferences.playbackSpeed = v; this.save(); },
         isSeeking: false,
-        _pendingSeek: null,
         isDark: (function(){ try { const s = JSON.parse(localStorage.getItem('baqarah-state')||'{}'); const p = s.preferences?.darkMode; if (p !== null && p !== undefined) return p; } catch{} const old = localStorage.getItem('baqarah-dark'); if (old) return old === 'true'; return window.matchMedia('(prefers-color-scheme: dark)').matches; })(),
         isInstalled: window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
         deferredPrompt: null,
@@ -899,11 +899,14 @@
 
         // ── Heat map (past 112 days = 16 weeks) ──
         get heatMapDays() {
-          const logSet = new Set(this.state.dailyLog);
+          const activity = this.state.dailyActivity || {};
           const days = [];
           for (let i = 111; i >= 0; i--) {
             const d = localDate(new Date(Date.now() - i * 86400000));
-            days.push({ date: d, active: logSet.has(d), intensity: logSet.has(d) ? 1 : 0 });
+            const listens = activity[d]?.listens || 0;
+            // 5 tiers: 0=none, 1-5=tier1, 6-10=tier2, 11-15=tier3, 16-20=tier4, 21+=tier5
+            const tier = listens === 0 ? 0 : Math.min(5, Math.ceil(listens / 5));
+            days.push({ date: d, active: listens > 0, intensity: tier / 5 });
           }
           return days;
         },
@@ -1120,7 +1123,7 @@
           this.installTotal = allFiles.length;
 
           // Open the cache
-          const cache = await caches.open('baqarah-v3');
+          const cache = await caches.open('baqarah-v4');
 
           // Download in batches of 4 to avoid overwhelming the connection
           for (let i = 0; i < allFiles.length; i += 4) {
@@ -1162,7 +1165,6 @@
           this.audioCurrentTime = 0;
           this.audioDuration = 0;
           this.isSeeking = false;
-          this._pendingSeek = null;
           this._lastActiveAyah = -1;
           this._focusIdx = 0;
           this._focusFade = false;
@@ -1193,13 +1195,24 @@
         },
         seekToAyah(startTime) {
           const a = this.$refs.audio;
-          if (a.duration && isFinite(a.duration)) {
-            a.currentTime = startTime;
-            this.audioCurrentTime = startTime;
-          } else {
-            this._pendingSeek = startTime;
+          const wantPlay = !this.isPlaying;
+          this.audioCurrentTime = startTime;
+          this.playerVisible = true;
+          // Try normal seek first
+          a.currentTime = startTime;
+          // If seekable range is empty/zero, the browser can't seek — use media fragment reload
+          const seekable = a.seekable.length ? a.seekable.end(0) : 0;
+          if (seekable < 1 || Math.abs(a.currentTime - startTime) > 2) {
+            // Reload with #t= fragment — browser starts at that position
+            const baseSrc = this.selectedPage.file;
+            a.src = baseSrc + '#t=' + startTime.toFixed(2);
+            a.load();
+            if (wantPlay) a.addEventListener('canplay', () => { a.play().catch(() => {}); this.isPlaying = true; this.logToday(); }, { once: true });
+          } else if (wantPlay) {
+            a.play().catch(() => {});
+            this.isPlaying = true;
+            this.logToday();
           }
-          if (!this.isPlaying) { a.play().catch(() => {}); this.isPlaying = true; this.playerVisible = true; this.logToday(); }
         },
         onTimeUpdate() {
           if (this.isSeeking) return;
@@ -1228,12 +1241,6 @@
           if (a.duration && isFinite(a.duration)) {
             this.audioDuration = a.duration;
           }
-          // Apply any seek that was requested before metadata was ready
-          if (this._pendingSeek !== null && this.audioDuration > 0) {
-            a.currentTime = Math.min(this._pendingSeek, this.audioDuration);
-            this.audioCurrentTime = a.currentTime;
-            this._pendingSeek = null;
-          }
         },
         onDurationChange() {
           const a = this.$refs.audio;
@@ -1250,13 +1257,13 @@
         onSeekCommit(event) {
           const v = parseFloat(event.target.value);
           const a = this.$refs.audio;
-          if (a.duration && isFinite(a.duration) && a.duration > 0) {
-            // Audio is ready — seek immediately
-            a.currentTime = Math.min(v, a.duration);
-            this.audioCurrentTime = a.currentTime;
-          } else {
-            // Audio not ready yet — queue the seek for when metadata arrives
-            this._pendingSeek = v;
+          this.audioCurrentTime = v;
+          a.currentTime = v;
+          const seekable = a.seekable.length ? a.seekable.end(0) : 0;
+          if (seekable < 1 || Math.abs(a.currentTime - v) > 2) {
+            a.src = this.selectedPage.file + '#t=' + v.toFixed(2);
+            a.load();
+            if (this.isPlaying) a.addEventListener('canplay', () => { a.play().catch(() => {}); }, { once: true });
           }
           this.isSeeking = false;
         },

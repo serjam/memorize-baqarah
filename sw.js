@@ -1,12 +1,9 @@
-const CACHE_NAME = 'baqarah-v3';
+const CACHE_NAME = 'baqarah-v4';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './quran-data.js',
-  'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js',
-  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js',
 ];
 
 self.addEventListener('install', event => {
@@ -42,10 +39,15 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first for audio files and mushaf images
-  if (url.pathname.includes('/audio/') || url.hostname === 'www.mp3quran.net') {
+  // Audio files: let the browser/network handle directly (Range requests work natively)
+  // Mushaf images: cache-first (no seeking needed)
+  if (url.pathname.includes('/audio/')) {
+    return; // Don't intercept — browser handles Range requests natively with Cloudflare
+  }
+
+  if (url.hostname === 'www.mp3quran.net') {
     event.respondWith(
-      caches.match(event.request, { ignoreVary: true }).then(cached => {
+      caches.match(new Request(url.href), { ignoreVary: true }).then(cached => {
         if (cached) return cached;
         return fetch(event.request).then(response => {
           if (response.ok || response.type === 'opaque') {

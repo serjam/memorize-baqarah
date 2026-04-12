@@ -88,6 +88,15 @@
         <svg x-show="isDark" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
         <svg x-show="!isDark" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
       </button>
+      <!-- Share card -->
+      <button @click="generateShareCard()" aria-label="Share progress" class="p-2 rounded-lg transition-colors hover:opacity-70" style="color: var(--muted);">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+      </button>
+      <!-- Bookmarks -->
+      <button @click="showBookmarks = true" aria-label="Bookmarks" class="p-2 rounded-lg transition-colors hover:opacity-70 relative" style="color: var(--muted);">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+        <span x-show="state.bookmarks.length > 0" class="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white" style="background: var(--accent);" x-text="state.bookmarks.length"></span>
+      </button>
       <button @click="showSettings = true" aria-label="Settings" class="p-2 rounded-lg transition-colors hover:opacity-70" style="color: var(--muted);">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
@@ -113,6 +122,7 @@
           Import <input type="file" accept=".json" @change="importData($event)" class="hidden">
         </label>
       </div>
+      <button @click="generateBuddyLink(); showSettings = false;" class="w-full rounded-lg px-4 py-2 text-sm font-medium hover:opacity-80" style="background: var(--surface2); color: var(--text);">Share Buddy Link</button>
       <button @click="resetData()" class="w-full rounded-lg px-4 py-2 text-sm font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20">Reset All Progress</button>
       <button @click="showSettings = false" class="w-full rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--accent);">Done</button>
     </div>
@@ -176,6 +186,81 @@
     </div>
   </div>
 
+  <!-- ═══ BOOKMARKS MODAL ═══ -->
+  <div x-show="showBookmarks" x-transition.opacity class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showBookmarks = false">
+    <div class="rounded-2xl p-6 w-full max-w-md border space-y-3 max-h-[80vh] overflow-y-auto scrollbar-hide" style="background: var(--surface); border-color: var(--border);">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Bookmarks</h2>
+        <span class="text-xs" style="color: var(--muted);" x-text="state.bookmarks.length + ' saved'"></span>
+      </div>
+      <template x-if="state.bookmarks.length === 0">
+        <p class="text-sm text-center py-4" style="color: var(--muted);">No bookmarks yet. Tap the bookmark icon on any ayah to save it.</p>
+      </template>
+      <template x-for="(bm, i) in state.bookmarks" :key="bm.ayahNum">
+        <div class="rounded-lg p-3 border space-y-1 cursor-pointer hover:opacity-80"
+             style="background: var(--surface2); border-color: var(--border);"
+             @click="showBookmarks = false; selectPage(findPageForAyah(bm.ayahNum)); viewMode = 'live';">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold" style="color: var(--accent);" x-text="'Ayah ' + bm.ayahNum"></span>
+            <button @click.stop="state.bookmarks.splice(i, 1); save();" class="text-xs px-1.5 py-0.5 rounded hover:opacity-70" style="color: var(--muted);">&#10005;</button>
+          </div>
+          <p class="font-amiri text-sm leading-relaxed truncate" dir="rtl" x-text="getAyahText(bm.ayahNum, 'ar')"></p>
+          <p class="text-xs truncate" style="color: var(--muted);" x-text="getAyahText(bm.ayahNum, 'en')"></p>
+        </div>
+      </template>
+      <button @click="showBookmarks = false" class="w-full rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--accent);">Done</button>
+    </div>
+  </div>
+
+  <!-- ═══ BUDDY COMPARISON MODAL ═══ -->
+  <div x-show="showBuddy" x-transition.opacity class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showBuddy = false">
+    <div class="rounded-2xl p-6 w-full max-w-lg border space-y-4" style="background: var(--surface); border-color: var(--border);">
+      <h2 class="text-lg font-semibold text-center">Progress Comparison</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <h3 class="text-xs font-semibold text-center" style="color: var(--muted);">Friend</h3>
+          <div class="grid grid-cols-8 gap-1">
+            <template x-for="i in 48" :key="'b'+i">
+              <div class="aspect-square rounded-sm" :style="buddyData?.completedPages?.has(i-1) ? 'background:var(--accent);' : 'background:var(--border); opacity:0.4;'"></div>
+            </template>
+          </div>
+          <div class="text-center">
+            <div class="text-xl font-bold" style="color: var(--accent);" x-text="(buddyData?.count || 0) + '/48'"></div>
+            <div class="text-xs" style="color: var(--muted);" x-text="'\uD83D\uDD25 ' + (buddyData?.streak || 0) + ' day streak'"></div>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <h3 class="text-xs font-semibold text-center" style="color: var(--muted);">You</h3>
+          <div class="grid grid-cols-8 gap-1">
+            <template x-for="(page, i) in pages" :key="'y'+i">
+              <div class="aspect-square rounded-sm" :style="state.pages[page.mushafPage]?.completed ? 'background:var(--accent);' : 'background:var(--border); opacity:0.4;'"></div>
+            </template>
+          </div>
+          <div class="text-center">
+            <div class="text-xl font-bold" style="color: var(--accent);" x-text="completedCount + '/48'"></div>
+            <div class="text-xs" style="color: var(--muted);" x-text="'\uD83D\uDD25 ' + currentStreak + ' day streak'"></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button @click="generateBuddyLink()" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium border hover:opacity-80" style="border-color: var(--border); color: var(--text);">Share Yours Back</button>
+        <button @click="showBuddy = false" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--accent);">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SHARE CARD MODAL ═══ -->
+  <div x-show="showShareCard" x-transition.opacity class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click.self="showShareCard = false">
+    <div class="rounded-2xl p-4 w-full max-w-sm border space-y-3" style="background: var(--surface); border-color: var(--border);">
+      <h2 class="text-lg font-semibold text-center">Your Progress Card</h2>
+      <img x-show="_shareCardDataUrl" :src="_shareCardDataUrl" class="w-full rounded-lg" alt="Progress card">
+      <div class="flex gap-2">
+        <button @click="downloadShareCard()" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium text-white" style="background: var(--accent);">Download Image</button>
+        <button @click="showShareCard = false" class="flex-1 rounded-lg px-4 py-2 text-sm font-medium border hover:opacity-80" style="border-color: var(--border); color: var(--text);">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ CELEBRATION MODAL ═══ -->
   <div x-show="celebration.show" x-transition.opacity.duration.400ms
     class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" @click.self="celebration.show = false">
@@ -205,7 +290,7 @@
     <div class="max-w-7xl mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-5">
 
       <!-- LEFT COLUMN -->
-      <div class="space-y-4">
+      <div class="space-y-4 min-w-0">
 
         <!-- Du'a / Hadith Banner -->
         <div class="rounded-lg px-3 py-2 text-xs italic flex items-center gap-2"
@@ -253,13 +338,62 @@
           </div>
         </div>
 
+        <!-- Journey Map -->
+        <div>
+          <h2 class="text-sm font-semibold mb-2" style="color: var(--muted);">Journey</h2>
+          <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" x-ref="journeyScroll">
+            <template x-for="(theme, ti) in themesProgress" :key="ti">
+              <button class="shrink-0 rounded-xl px-3 py-2 border text-left transition-all"
+                      :style="theme.pct === 100
+                        ? 'background:var(--accent-bg);border-color:var(--accent);'
+                        : theme.isCurrent
+                          ? 'background:color-mix(in srgb, var(--gold) 10%, var(--surface));border-color:var(--gold);'
+                          : 'background:var(--surface);border-color:var(--border);'"
+                      @click="selectedTheme = selectedTheme === ti ? null : ti; if (selectedTheme === ti) selectPage(theme.pages[0])">
+                <div class="flex items-center gap-1.5 mb-1">
+                  <span class="text-sm" x-text="theme.icon"></span>
+                  <span class="text-[11px] font-semibold truncate max-w-[100px]" x-text="theme.name"></span>
+                </div>
+                <div class="w-full rounded-full h-1" style="background: var(--border);">
+                  <div class="h-1 rounded-full transition-all duration-500"
+                       :style="'background:' + (theme.pct === 100 ? 'var(--accent)' : 'var(--gold)') + ';width:' + theme.pct + '%'"></div>
+                </div>
+                <span class="text-[9px] mt-0.5 block" style="color: var(--muted);" x-text="theme.done + '/' + theme.total"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Review Queue -->
+        <div x-show="reviewQueue.length > 0" class="rounded-xl p-3 border space-y-2" style="background: color-mix(in srgb, var(--gold) 8%, var(--surface)); border-color: color-mix(in srgb, var(--gold) 25%, var(--border));">
+          <div class="flex items-center gap-1.5">
+            <span class="text-base">&#128214;</span>
+            <h2 class="text-sm font-semibold" style="color: var(--gold);">Review Today</h2>
+          </div>
+          <div class="space-y-1.5">
+            <template x-for="item in reviewQueue" :key="item.mushafPage">
+              <button class="w-full flex items-center justify-between rounded-lg px-3 py-2 text-xs border transition-colors hover:opacity-80"
+                      style="background: var(--surface); border-color: var(--border);"
+                      @click="selectPage(item.pageIndex); togglePlay();">
+                <span class="font-medium" x-text="'Week ' + (item.pageIndex + 1)"></span>
+                <span style="color: var(--muted);" x-text="item.daysSince + 'd ago'"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
         <!-- Grid (8 cols desktop, 6 cols mobile) -->
         <div>
-          <h2 class="text-sm font-semibold mb-2" style="color: var(--muted);">Weekly Pages</h2>
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-sm font-semibold" style="color: var(--muted);" x-text="selectedTheme !== null ? THEMES[selectedTheme].name : 'Weekly Pages'"></h2>
+            <button x-show="selectedTheme !== null" @click="selectedTheme = null" class="text-xs px-2 py-0.5 rounded-full hover:opacity-70" style="color: var(--accent);">Show all</button>
+          </div>
           <div class="grid grid-cols-6 sm:grid-cols-8 gap-1.5">
             <template x-for="(page, i) in pages" :key="page.mushafPage">
-              <button class="grid-cell aspect-square rounded-lg flex items-center justify-center font-semibold text-xs relative border"
-                :style="gridCellStyle(page, i)" @click="selectPage(i)">
+              <button class="grid-cell aspect-square rounded-lg flex items-center justify-center font-semibold text-xs relative border transition-opacity duration-200"
+                :style="gridCellStyle(page, i)"
+                :class="selectedTheme !== null && !THEMES[selectedTheme]?.pages?.includes(i) ? 'opacity-15 pointer-events-none' : ''"
+                @click="selectPage(i)">
                 <span x-text="i + 1"></span>
                 <template x-if="state.pages[page.mushafPage]?.completed">
                   <svg class="absolute top-0.5 right-0.5 w-2.5 h-2.5" style="color: var(--accent);" fill="currentColor" viewBox="0 0 20 20">
@@ -368,13 +502,17 @@
             <div x-show="viewMode === 'live'" class="overflow-y-auto scrollbar-hide" style="max-height: calc(100vh - 12rem);" x-ref="liveContainer">
               <div class="p-3 space-y-2">
                 <template x-for="(ayah, idx) in pageAyahs" :key="ayah.n">
-                  <div class="ayah-card rounded-xl p-4 border cursor-pointer"
+                  <div class="ayah-card rounded-xl p-4 border cursor-pointer relative"
                        :id="'ayah-' + ayah.n"
                        :class="activeAyahIndex === idx ? 'ayah-active' : ''"
                        :style="activeAyahIndex === idx
                          ? 'background:var(--accent-bg);border-color:var(--accent);'
                          : 'background:var(--surface2);border-color:var(--border);'"
                        @click="seekToAyah(ayah.start)">
+                    <button @click.stop="toggleBookmark(ayah.n)" class="absolute top-3 right-3 p-1 mb-2 rounded-full hover:opacity-70 z-10"
+                            :style="isBookmarked(ayah.n) ? 'color:var(--accent);' : 'color:var(--muted); opacity:0.3;'">
+                      <svg class="w-4 h-4" :fill="isBookmarked(ayah.n) ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+                    </button>
                     <div class="flex items-start gap-3">
                       <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-semibold shrink-0 mt-2"
                             :style="activeAyahIndex === idx
@@ -478,7 +616,7 @@
     </div>
   </div>
 
-  <audio x-ref="audio"
+  <audio x-ref="audio" preload="metadata"
     @timeupdate="onTimeUpdate()"
     @ended="onAudioEnded()"
     @loadedmetadata="onMetadataLoaded()"
@@ -537,6 +675,23 @@
     ];
 
     // Local date string (not UTC) to fix streak/heatmap across timezones
+    const THEMES = [
+      { name: 'The Opening', pages: [0, 1], icon: '\u{1F4D6}' },
+      { name: 'Guidance vs Hypocrisy', pages: [2, 3, 4], icon: '\u{1F50D}' },
+      { name: 'Story of Adam', pages: [5, 6], icon: '\u{1F33F}' },
+      { name: 'Children of Israel', pages: [7, 8, 9, 10, 11, 12, 13], icon: '\u{1F4DC}' },
+      { name: 'Testing of Faith', pages: [14, 15, 16], icon: '\u2696\uFE0F' },
+      { name: "Ibrahim's Legacy", pages: [17, 18, 19], icon: '\u{1F54B}' },
+      { name: 'Change of Qiblah', pages: [20, 21, 22, 23], icon: '\u{1F9ED}' },
+      { name: 'Patience & Sacrifice', pages: [24, 25, 26, 27], icon: '\u{1F48E}' },
+      { name: 'Hajj & Jihad', pages: [28, 29, 30, 31], icon: '\u26F0\uFE0F' },
+      { name: 'Laws of Living', pages: [32, 33, 34, 35, 36, 37], icon: '\u{1F4CB}' },
+      { name: 'Stories of Kings', pages: [38, 39, 40], icon: '\u{1F451}' },
+      { name: 'Ayat al-Kursi', pages: [41, 42], icon: '\u2B50' },
+      { name: 'Charity & Riba', pages: [43, 44, 45, 46], icon: '\u{1F932}' },
+      { name: "The Final Du'a", pages: [46, 47], icon: '\u{1F54A}\uFE0F' },
+    ];
+
     function localDate(d = new Date()) {
       return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
@@ -544,19 +699,75 @@
     function daysBetween(a, b) {
       return Math.round((new Date(a+'T00:00:00Z') - new Date(b+'T00:00:00Z')) / 86400000);
     }
+    function encodeBuddyLink(state) {
+      const bytes = new Uint8Array(10);
+      PAGES.forEach((p, i) => { if (state.pages[p.mushafPage]?.completed) bytes[Math.floor(i / 8)] |= (1 << (i % 8)); });
+      const count = Object.values(state.pages).filter(p => p.completed).length;
+      const days = Math.min(65535, Math.max(0, daysBetween(localDate(), state.startDate)));
+      bytes[6] = count;
+      bytes[7] = Math.min(255, computeStreak(state.dailyLog));
+      bytes[8] = (days >> 8) & 0xFF; bytes[9] = days & 0xFF;
+      return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+    function decodeBuddyLink(encoded) {
+      try {
+        const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+        const bytes = new Uint8Array([...atob(b64)].map(c => c.charCodeAt(0)));
+        if (bytes.length < 10) return null;
+        const completedPages = new Set();
+        for (let i = 0; i < 48; i++) { if (bytes[Math.floor(i / 8)] & (1 << (i % 8))) completedPages.add(i); }
+        return { completedPages, count: bytes[6], streak: bytes[7], days: (bytes[8] << 8) | bytes[9] };
+      } catch { return null; }
+    }
+    function computeStreak(dailyLog) {
+      const log = [...new Set(dailyLog)].sort().reverse();
+      if (!log.length) return 0;
+      const today = localDate();
+      const yesterday = localDate(new Date(Date.now() - 86400000));
+      if (log[0] !== today && log[0] !== yesterday) return 0;
+      let s = 1;
+      for (let i = 1; i < log.length; i++) { if (daysBetween(log[i-1], log[i]) === 1) s++; else break; }
+      return s;
+    }
 
     function getDefaultState() {
       const pages = {};
-      PAGES.forEach(p => { pages[p.mushafPage] = { completed: false, listenCount: 0, lastListened: null }; });
-      return { startDate: localDate(), pages, dailyLog: [] };
+      PAGES.forEach(p => { pages[p.mushafPage] = { completed: false, completedDate: null, listenCount: 0, lastListened: null, firstListened: null, listenTimeSeconds: 0, quizBestScore: null, reviewDates: [] }; });
+      return {
+        version: 2, startDate: localDate(), pages, dailyLog: [],
+        dailyActivity: {}, bookmarks: [],
+        preferences: { viewMode: 'mushaf', playbackSpeed: 1, looping: false, muted: false, darkMode: null, lastSelectedIndex: null },
+        shownCelebrations: [], anniversaryShown: false,
+      };
     }
     function loadState() {
       try {
         const raw = localStorage.getItem('baqarah-state');
         if (raw) {
           const s = JSON.parse(raw);
-          PAGES.forEach(p => { if (!s.pages[p.mushafPage]) s.pages[p.mushafPage] = { completed: false, listenCount: 0, lastListened: null }; });
+          // Backfill pages
+          PAGES.forEach(p => { if (!s.pages[p.mushafPage]) s.pages[p.mushafPage] = { completed: false, completedDate: null, listenCount: 0, lastListened: null, firstListened: null, listenTimeSeconds: 0, quizBestScore: null, reviewDates: [] }; });
           if (!s.dailyLog) s.dailyLog = [];
+          s.dailyLog = [...new Set(s.dailyLog)].sort();
+          // v1 → v2 migration
+          if (!s.bookmarks) s.bookmarks = [];
+          if (!s.dailyActivity) s.dailyActivity = {};
+          if (!s.preferences) {
+            const darkPref = localStorage.getItem('baqarah-dark');
+            s.preferences = { viewMode: 'mushaf', playbackSpeed: 1, looping: false, muted: false, darkMode: darkPref === 'true' ? true : darkPref === 'false' ? false : null, lastSelectedIndex: null };
+          }
+          if (!s.shownCelebrations) s.shownCelebrations = JSON.parse(localStorage.getItem('baqarah-celebrations') || '[]');
+          if (s.anniversaryShown === undefined) s.anniversaryShown = localStorage.getItem('baqarah-anniversary') === 'true';
+          // Backfill new per-page fields
+          for (const key in s.pages) {
+            const pg = s.pages[key];
+            if (pg.completedDate === undefined) pg.completedDate = null;
+            if (pg.firstListened === undefined) pg.firstListened = null;
+            if (pg.listenTimeSeconds === undefined) pg.listenTimeSeconds = 0;
+            if (pg.quizBestScore === undefined) pg.quizBestScore = null;
+            if (pg.reviewDates === undefined) pg.reviewDates = [];
+          }
+          s.version = 2;
           return s;
         }
       } catch (e) {}
@@ -573,12 +784,15 @@
         playerVisible: false,
         audioCurrentTime: 0,
         audioDuration: 0,
-        muted: false,
-        looping: false,
-        playbackSpeed: 1,
+        get muted() { return this.state.preferences.muted; },
+        set muted(v) { this.state.preferences.muted = v; this.save(); },
+        get looping() { return this.state.preferences.looping; },
+        set looping(v) { this.state.preferences.looping = v; this.save(); },
+        get playbackSpeed() { return this.state.preferences.playbackSpeed; },
+        set playbackSpeed(v) { this.state.preferences.playbackSpeed = v; this.save(); },
         isSeeking: false,
         _pendingSeek: null,
-        isDark: localStorage.getItem('baqarah-dark') === 'true' || (!localStorage.getItem('baqarah-dark') && window.matchMedia('(prefers-color-scheme: dark)').matches),
+        isDark: (function(){ try { const s = JSON.parse(localStorage.getItem('baqarah-state')||'{}'); const p = s.preferences?.darkMode; if (p !== null && p !== undefined) return p; } catch{} const old = localStorage.getItem('baqarah-dark'); if (old) return old === 'true'; return window.matchMedia('(prefers-color-scheme: dark)').matches; })(),
         isInstalled: window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
         deferredPrompt: null,
         showInstall: false,
@@ -587,20 +801,33 @@
         installDone: 0,
         installTotal: 0,
         installCurrentFile: '',
-        viewMode: 'mushaf',
+        get viewMode() { return this.state.preferences.viewMode; },
+        set viewMode(v) { this.state.preferences.viewMode = v; this.save(); },
         _lastActiveAyah: -1,
         _focusIdx: 0,
         _focusFade: false,
+        showBookmarks: false,
+        showBuddy: false,
+        selectedTheme: null,
+        showShareCard: false,
+        _shareCardDataUrl: null,
+        buddyData: null,
         celebration: { show: false, emoji: '', title: '', subtitle: '', hadith: '', button: '', shareable: false, tier: 'gentle' },
-        shownCelebrations: JSON.parse(localStorage.getItem('baqarah-celebrations') || '[]'),
+        get shownCelebrations() { return this.state.shownCelebrations; },
 
         gridCellStyle(page, i) {
-          const done = this.state.pages[page.mushafPage]?.completed;
+          const pg = this.state.pages[page.mushafPage];
+          const done = pg?.completed;
           const cur = i + 1 === this.currentWeek;
           const sel = this.selectedIndex === i;
+          const listens = pg?.listenCount || 0;
           if (sel) return 'background:var(--accent);color:white;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg);';
           if (done) return 'background:var(--accent-bg);color:var(--accent-text);border-color:color-mix(in srgb,var(--accent) 30%,transparent);';
           if (cur) return 'background:var(--accent-bg);color:var(--accent-text);border-color:color-mix(in srgb,var(--accent) 40%,transparent);';
+          if (listens > 0) {
+            const pct = Math.min(100, Math.round(listens / 25 * 100));
+            return 'background:color-mix(in srgb,var(--accent) ' + pct + '%,var(--surface));color:' + (pct > 50 ? 'var(--accent-text)' : 'var(--muted)') + ';border-color:color-mix(in srgb,var(--accent) ' + Math.round(pct * 0.4) + '%,var(--border));';
+          }
           return 'background:var(--surface);color:var(--muted);border-color:var(--border);';
         },
 
@@ -681,6 +908,30 @@
           return days;
         },
 
+        get themesProgress() {
+          return THEMES.map(t => {
+            const done = t.pages.filter(i => this.state.pages[PAGES[i].mushafPage]?.completed).length;
+            const isCurrent = t.pages.includes(this.currentWeek - 1);
+            return { ...t, done, total: t.pages.length, pct: Math.round(done / t.pages.length * 100), isCurrent };
+          });
+        },
+        get reviewQueue() {
+          const today = localDate();
+          const intervals = [1, 3, 7, 14, 30, 60];
+          const due = [];
+          PAGES.forEach((p, i) => {
+            const pg = this.state.pages[p.mushafPage];
+            if (!pg.completed) return;
+            const lastReview = pg.lastListened || pg.completedDate;
+            if (!lastReview) return;
+            const daysSince = daysBetween(today, lastReview);
+            const reviewCount = pg.reviewDates?.length || 0;
+            const nextInterval = intervals[Math.min(reviewCount, intervals.length - 1)] || 60;
+            if (daysSince >= nextInterval) due.push({ mushafPage: p.mushafPage, pageIndex: i, daysSince });
+          });
+          due.sort((a, b) => b.daysSince - a.daysSince);
+          return due.slice(0, 3);
+        },
         // ── Stats ──
         get totalListens() {
           return Object.values(this.state.pages).reduce((sum, p) => sum + (p.listenCount || 0), 0);
@@ -735,7 +986,7 @@
           this.celebration = { show: true, emoji, title, subtitle, hadith: hadith || '', button: button || 'Continue', shareable: !!shareable, tier };
           this.$nextTick(() => this.fireConfetti(tier));
           if (navigator.vibrate) navigator.vibrate(tier === 'epic' ? [50,30,50,30,80] : tier === 'grand' ? [50,30,50] : [50]);
-          if (dedupKey) { this.shownCelebrations.push(dedupKey); localStorage.setItem('baqarah-celebrations', JSON.stringify(this.shownCelebrations)); }
+          if (dedupKey) { this.state.shownCelebrations.push(dedupKey); this.save(); }
         },
 
         fireConfetti(tier) {
@@ -838,18 +1089,24 @@
         },
 
         // ── Share ──
-        async shareProgress() {
-          const text = `Memorizing Surah Al-Baqarah — ${this.completedCount}/48 pages complete!`;
-          if (navigator.share) {
-            try { await navigator.share({ title: 'Memorize Al-Baqarah', text }); } catch {}
-          } else {
-            navigator.clipboard?.writeText(text);
-            alert('Progress copied to clipboard!');
+        generateBuddyLink() {
+          const encoded = encodeBuddyLink(this.state);
+          const url = window.location.origin + window.location.pathname + '#buddy/' + encoded;
+          if (navigator.clipboard) { navigator.clipboard.writeText(url); alert('Buddy link copied to clipboard!'); }
+          return url;
+        },
+        checkBuddyLink() {
+          const hash = window.location.hash;
+          if (hash.startsWith('#buddy/')) {
+            this.buddyData = decodeBuddyLink(hash.slice(7));
+            if (this.buddyData) this.showBuddy = true;
+            history.replaceState(null, '', window.location.pathname);
           }
         },
+        async shareProgress() { this.generateShareCard(); },
 
         save() { localStorage.setItem('baqarah-state', JSON.stringify(this.state)); },
-        toggleDark() { this.isDark = !this.isDark; localStorage.setItem('baqarah-dark', this.isDark); document.documentElement.classList.toggle('dark', this.isDark); },
+        toggleDark() { this.isDark = !this.isDark; this.state.preferences.darkMode = this.isDark; this.save(); document.documentElement.classList.toggle('dark', this.isDark); },
 
         async startInstall() {
           this.showInstall = true;
@@ -900,6 +1157,7 @@
 
         selectPage(i) {
           this.selectedIndex = i;
+          this.state.preferences.lastSelectedIndex = i; this.save();
           this.isPlaying = false;
           this.audioCurrentTime = 0;
           this.audioDuration = 0;
@@ -909,14 +1167,19 @@
           this._focusIdx = 0;
           this._focusFade = false;
           const audio = this.$refs.audio;
+          audio.pause();
           audio.src = PAGES[i].file;
           audio.load();
         },
         togglePlay() {
           if (!this.selectedPage) return;
           const a = this.$refs.audio;
-          if (a.paused) { a.play(); this.isPlaying = true; this.playerVisible = true; this.logToday(); }
-          else { a.pause(); this.isPlaying = false; }
+          if (a.paused) {
+            a.play().catch(() => {});
+            this.isPlaying = true; this.playerVisible = true; this.logToday();
+            const pg = this.state.pages[this.selectedPage.mushafPage];
+            if (pg && !pg.firstListened) { pg.firstListened = localDate(); this.save(); }
+          } else { a.pause(); this.isPlaying = false; }
         },
         prevAyah() {
           const idx = this.activeAyahIndex;
@@ -936,7 +1199,7 @@
           } else {
             this._pendingSeek = startTime;
           }
-          if (!this.isPlaying) { a.play(); this.isPlaying = true; this.playerVisible = true; this.logToday(); }
+          if (!this.isPlaying) { a.play().catch(() => {}); this.isPlaying = true; this.playerVisible = true; this.logToday(); }
         },
         onTimeUpdate() {
           if (this.isSeeking) return;
@@ -983,7 +1246,6 @@
           // but do NOT set audio.currentTime yet (that happens on commit)
           const v = parseFloat(event.target.value);
           this.audioCurrentTime = v;
-          this.audioProgress = this.audioDuration ? (v / this.audioDuration) * 100 : 0;
         },
         onSeekCommit(event) {
           const v = parseFloat(event.target.value);
@@ -999,7 +1261,17 @@
           this.isSeeking = false;
         },
         onAudioEnded() {
-          if (this.selectedPage) { const pg = this.state.pages[this.selectedPage.mushafPage]; pg.listenCount++; pg.lastListened = localDate(); this.save(); }
+          if (this.selectedPage) {
+            const pg = this.state.pages[this.selectedPage.mushafPage];
+            const today = localDate();
+            pg.listenCount++; pg.lastListened = today;
+            pg.listenTimeSeconds = (pg.listenTimeSeconds || 0) + Math.round(this.audioDuration || 0);
+            if (pg.completed && pg.reviewDates) pg.reviewDates.push(today);
+            if (!this.state.dailyActivity[today]) this.state.dailyActivity[today] = { listens: 0, seconds: 0 };
+            this.state.dailyActivity[today].listens++;
+            this.state.dailyActivity[today].seconds += Math.round(this.audioDuration || 0);
+            this.save();
+          }
           if (this.looping) { this.$refs.audio.currentTime = 0; this.$refs.audio.play(); return; }
           this.isPlaying = false;
         },
@@ -1016,6 +1288,7 @@
           const prevCount = this.completedCount;
           const pg = this.state.pages[this.selectedPage.mushafPage];
           pg.completed = !pg.completed;
+          pg.completedDate = pg.completed ? localDate() : null;
           this.save();
           if (pg.completed) {
             if (navigator.vibrate) navigator.vibrate(50);
@@ -1030,6 +1303,98 @@
           }
         },
         formatTime(s) { if (!s||isNaN(s)) return '0:00'; return Math.floor(s/60)+':'+(Math.floor(s%60)<10?'0':'')+Math.floor(s%60); },
+        // Bookmark helpers
+        isBookmarked(ayahNum) { return this.state.bookmarks.some(b => b.ayahNum === ayahNum); },
+        toggleBookmark(ayahNum) {
+          const idx = this.state.bookmarks.findIndex(b => b.ayahNum === ayahNum);
+          if (idx >= 0) this.state.bookmarks.splice(idx, 1);
+          else this.state.bookmarks.push({ ayahNum, note: '', dateAdded: localDate() });
+          this.save();
+        },
+        getAyahText(ayahNum, lang) {
+          for (const key in AYAH_DATA) {
+            const ayah = AYAH_DATA[key].find(a => a.n === ayahNum);
+            if (ayah) return lang === 'ar' ? ayah.ar : ayah.en;
+          }
+          return '';
+        },
+        findPageForAyah(ayahNum) {
+          return PAGES.findIndex(p => ayahNum >= p.ayahStart && ayahNum <= p.ayahEnd);
+        },
+        // Share card
+        generateShareCard() {
+          const canvas = document.createElement('canvas');
+          canvas.width = 1080; canvas.height = 1920;
+          const ctx = canvas.getContext('2d');
+          // Background
+          ctx.fillStyle = '#111110';
+          ctx.fillRect(0, 0, 1080, 1920);
+          // Title
+          ctx.fillStyle = '#EEEEEC';
+          ctx.font = 'bold 52px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Memorize Al-Baqarah', 540, 160);
+          ctx.fillStyle = '#84847E';
+          ctx.font = '28px Inter, sans-serif';
+          ctx.fillText('A page a week, done in a year', 540, 210);
+          // Grid (8x6)
+          const cellSize = 90, gap = 12, gridW = 8 * cellSize + 7 * gap;
+          const startX = (1080 - gridW) / 2, startY = 300;
+          PAGES.forEach((p, i) => {
+            const col = i % 8, row = Math.floor(i / 8);
+            const x = startX + col * (cellSize + gap), y = startY + row * (cellSize + gap);
+            const done = this.state.pages[p.mushafPage]?.completed;
+            ctx.fillStyle = done ? '#29A383' : '#2C2C2A';
+            ctx.beginPath(); ctx.roundRect(x, y, cellSize, cellSize, 12); ctx.fill();
+            ctx.fillStyle = done ? '#ffffff' : '#84847E';
+            ctx.font = 'bold 24px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(String(i + 1), x + cellSize / 2, y + cellSize / 2 + 8);
+          });
+          // Stats
+          const statsY = startY + 6 * (cellSize + gap) + 60;
+          ctx.fillStyle = '#EEEEEC';
+          ctx.font = 'bold 64px Inter, sans-serif';
+          ctx.fillText(this.completedCount + '/48', 540, statsY);
+          ctx.fillStyle = '#84847E';
+          ctx.font = '28px Inter, sans-serif';
+          ctx.fillText('pages memorized', 540, statsY + 45);
+          // Streak
+          ctx.font = 'bold 36px Inter, sans-serif';
+          ctx.fillStyle = '#FBBF24';
+          ctx.fillText('\uD83D\uDD25 ' + this.currentStreak + ' day streak', 540, statsY + 120);
+          // Progress bar
+          const barW = 600, barH = 16, barX = (1080 - barW) / 2, barY = statsY + 160;
+          ctx.fillStyle = '#2C2C2A';
+          ctx.beginPath(); ctx.roundRect(barX, barY, barW, barH, 8); ctx.fill();
+          ctx.fillStyle = '#29A383';
+          ctx.beginPath(); ctx.roundRect(barX, barY, barW * (this.completedCount / 48), barH, 8); ctx.fill();
+          // Quote
+          ctx.fillStyle = '#84847E';
+          ctx.font = 'italic 24px Inter, sans-serif';
+          const quote = this.dailyMotivation;
+          // Word wrap
+          const words = quote.split(' '); let line = '', lineY = statsY + 250;
+          words.forEach(w => {
+            const test = line + w + ' ';
+            if (ctx.measureText(test).width > 800 && line) { ctx.fillText(line.trim(), 540, lineY); lineY += 36; line = w + ' '; }
+            else line = test;
+          });
+          if (line) ctx.fillText(line.trim(), 540, lineY);
+          // Date
+          ctx.fillStyle = '#63635E';
+          ctx.font = '22px Inter, sans-serif';
+          ctx.fillText(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), 540, 1860);
+          // Show in modal
+          this._shareCardDataUrl = canvas.toDataURL('image/png');
+          this.showShareCard = true;
+        },
+        downloadShareCard() {
+          const a = document.createElement('a');
+          a.href = this._shareCardDataUrl;
+          a.download = 'baqarah-progress-' + localDate() + '.png';
+          a.click();
+        },
         exportData() {
           const b=new Blob([JSON.stringify(this.state,null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download='baqarah-progress-'+localDate()+'.json';a.click();URL.revokeObjectURL(u);
         },
@@ -1062,22 +1427,36 @@
         init() {
           document.documentElement.classList.toggle('dark', this.isDark);
           window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-            if (!localStorage.getItem('baqarah-dark')) { this.isDark = e.matches; document.documentElement.classList.toggle('dark', this.isDark); }
+            if (this.state.preferences.darkMode === null) { this.isDark = e.matches; document.documentElement.classList.toggle('dark', this.isDark); }
           });
+          // Restore audio prefs
+          this.$refs.audio.playbackRate = this.playbackSpeed;
+          this.$refs.audio.muted = this.muted;
           // Capture Chrome install prompt
           window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); this.deferredPrompt = e; });
           window.addEventListener('appinstalled', () => { this.isInstalled = true; });
           if (navigator.storage?.persist) navigator.storage.persist();
-          this.selectPage(this.currentWeek - 1);
+          // Restore last page or current week
+          const lastIdx = this.state.preferences.lastSelectedIndex;
+          this.selectPage(lastIdx !== null && lastIdx >= 0 && lastIdx < 48 ? lastIdx : this.currentWeek - 1);
           // Year anniversary check
           const daysSinceStart = daysBetween(localDate(), this.state.startDate);
-          const shownAnniversary = localStorage.getItem('baqarah-anniversary');
-          if (daysSinceStart >= 365 && this.state.dailyLog.length > 30 && shownAnniversary !== 'true') {
-            localStorage.setItem('baqarah-anniversary', 'true');
+          if (daysSinceStart >= 365 && this.state.dailyLog.length > 30 && !this.state.anniversaryShown) {
+            this.state.anniversaryShown = true; this.save();
             setTimeout(() => this.celebrate('&#127775;', 'One Year With Al-Baqarah',
               'You started this journey on ' + new Date(this.state.startDate).toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'}) + '. The fact that you\'re still here is what matters.',
               null, 'epic', true), 1000);
           }
+          // Check for buddy link in URL
+          this.checkBuddyLink();
+          // Auto-scroll journey map to current theme
+          this.$nextTick(() => {
+            const el = this.$refs.journeyScroll;
+            if (el) {
+              const idx = this.themesProgress.findIndex(t => t.isCurrent);
+              if (idx > 0 && el.children[idx]) el.children[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+          });
         }
       }));
     });

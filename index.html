@@ -1159,18 +1159,9 @@
           }
         },
 
-        _updateHash() {
-          const parts = ['p=' + this.selectedIndex];
-          if (this.activeAyahIndex >= 0) {
-            const ayah = this.pageAyahs[this.activeAyahIndex];
-            if (ayah) parts.push('a=' + ayah.n);
-          }
-          history.replaceState(null, '', '#' + parts.join('&'));
-        },
         selectPage(i) {
           this.selectedIndex = i;
           this.state.preferences.lastSelectedIndex = i; this.save();
-          history.replaceState(null, '', '#p=' + i);
           this.isPlaying = false;
           this.audioCurrentTime = 0;
           this.audioDuration = 0;
@@ -1233,7 +1224,6 @@
           const idx = this.activeAyahIndex;
           if (idx !== this._lastActiveAyah && idx >= 0) {
             this._lastActiveAyah = idx;
-            this._updateHash();
             if (this.viewMode === 'live') {
               const ayah = this.pageAyahs[idx];
               if (ayah) {
@@ -1455,25 +1445,9 @@
           window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); this.deferredPrompt = e; });
           window.addEventListener('appinstalled', () => { this.isInstalled = true; });
           if (navigator.storage?.persist) navigator.storage.persist();
-          // Restore from URL hash, saved preference, or current week
-          const hash = window.location.hash;
-          let startPage = this.currentWeek - 1;
-          let startAyah = null;
-          if (hash && !hash.startsWith('#buddy/')) {
-            const params = new URLSearchParams(hash.slice(1));
-            const hp = parseInt(params.get('p'));
-            if (!isNaN(hp) && hp >= 0 && hp < 48) startPage = hp;
-            const ha = parseInt(params.get('a'));
-            if (!isNaN(ha)) startAyah = ha;
-          } else {
-            const lastIdx = this.state.preferences.lastSelectedIndex;
-            if (lastIdx !== null && lastIdx >= 0 && lastIdx < 48) startPage = lastIdx;
-          }
-          this.selectPage(startPage);
-          if (startAyah !== null) {
-            const ayah = this.pageAyahs.find(a => a.n === startAyah);
-            if (ayah) this.$nextTick(() => this.seekToAyah(ayah.start));
-          }
+          // Restore last page or default to current week
+          const lastIdx = this.state.preferences.lastSelectedIndex;
+          this.selectPage(lastIdx !== null && lastIdx >= 0 && lastIdx < 48 ? lastIdx : this.currentWeek - 1);
           // Year anniversary check
           const daysSinceStart = daysBetween(localDate(), this.state.startDate);
           if (daysSinceStart >= 365 && this.state.dailyLog.length > 30 && !this.state.anniversaryShown) {

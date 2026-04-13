@@ -5,6 +5,7 @@ const APP_SHELL = [
   './manifest.json',
   './quran-data.js',
 ];
+const OFFLINE_RESPONSE = new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -34,17 +35,17 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => caches.match(event.request))
+      }).catch(() => caches.match(event.request).then(r => r || OFFLINE_RESPONSE))
     );
     return;
   }
 
   // Audio files: let the browser/network handle directly (Range requests work natively)
-  // Mushaf images: cache-first (no seeking needed)
   if (url.pathname.includes('/audio/')) {
-    return; // Don't intercept — browser handles Range requests natively with Cloudflare
+    return;
   }
 
+  // Mushaf images: cache-first
   if (url.hostname === 'www.mp3quran.net') {
     event.respondWith(
       caches.match(new Request(url.href), { ignoreVary: true }).then(cached => {
@@ -55,7 +56,7 @@ self.addEventListener('fetch', event => {
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
           }
           return response;
-        });
+        }).catch(() => OFFLINE_RESPONSE);
       })
     );
     return;
@@ -70,7 +71,7 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => cached);
+      }).catch(() => cached || OFFLINE_RESPONSE);
       return cached || fetchPromise;
     })
   );

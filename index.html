@@ -502,7 +502,7 @@
             <div x-show="viewMode === 'live'" class="overflow-y-auto scrollbar-hide" style="max-height: calc(100vh - 12rem);" x-ref="liveContainer">
               <div class="p-3 space-y-2">
                 <template x-for="(ayah, idx) in pageAyahs" :key="ayah.n">
-                  <div class="ayah-card rounded-xl p-4 border cursor-pointer relative"
+                  <div class="ayah-card rounded-xl p-4 pr-10 border cursor-pointer relative"
                        :id="'ayah-' + ayah.n"
                        :class="activeAyahIndex === idx ? 'ayah-active' : ''"
                        :style="activeAyahIndex === idx
@@ -677,20 +677,20 @@
 
     // Local date string (not UTC) to fix streak/heatmap across timezones
     const THEMES = [
-      { name: 'The Opening', pages: [0, 1], icon: '\u{1F4D6}' },
-      { name: 'Guidance vs Hypocrisy', pages: [2, 3, 4], icon: '\u{1F50D}' },
-      { name: 'Story of Adam', pages: [5, 6], icon: '\u{1F33F}' },
-      { name: 'Children of Israel', pages: [7, 8, 9, 10, 11, 12, 13], icon: '\u{1F4DC}' },
-      { name: 'Testing of Faith', pages: [14, 15, 16], icon: '\u2696\uFE0F' },
-      { name: "Ibrahim's Legacy", pages: [17, 18, 19], icon: '\u{1F54B}' },
-      { name: 'Change of Qiblah', pages: [20, 21, 22, 23], icon: '\u{1F9ED}' },
-      { name: 'Patience & Sacrifice', pages: [24, 25, 26, 27], icon: '\u{1F48E}' },
-      { name: 'Hajj & Jihad', pages: [28, 29, 30, 31], icon: '\u26F0\uFE0F' },
-      { name: 'Laws of Living', pages: [32, 33, 34, 35, 36, 37], icon: '\u{1F4CB}' },
-      { name: 'Stories of Kings', pages: [38, 39, 40], icon: '\u{1F451}' },
-      { name: 'Ayat al-Kursi', pages: [41, 42], icon: '\u2B50' },
-      { name: 'Charity & Riba', pages: [43, 44, 45, 46], icon: '\u{1F932}' },
-      { name: "The Final Du'a", pages: [46, 47], icon: '\u{1F54A}\uFE0F' },
+      { name: 'Believers & Hypocrites', pages: [0, 1, 2, 3], icon: '\u{1F4D6}' },
+      { name: 'Story of Adam', pages: [4, 5], icon: '\u{1F33F}' },
+      { name: 'Bani Isra\u2019il & the Cow', pages: [6, 7, 8, 9, 10], icon: '\u{1F4DC}' },
+      { name: 'Breaking the Covenant', pages: [11, 12, 13, 14, 15, 16], icon: '\u{1F517}' },
+      { name: "Ibrahim & the Ka\u2019bah", pages: [17, 18, 19], icon: '\u{1F54B}' },
+      { name: 'Change of Qiblah', pages: [20, 21], icon: '\u{1F9ED}' },
+      { name: 'Trials & Signs of Allah', pages: [22, 23, 24], icon: '\u{1F30D}' },
+      { name: 'Righteousness & Fasting', pages: [25, 26, 27], icon: '\u{1F319}' },
+      { name: 'Hajj & Fighting', pages: [28, 29, 30, 31, 32], icon: '\u{1F54C}' },
+      { name: 'Marriage & Divorce', pages: [33, 34, 35, 36, 37], icon: '\u{1F4CB}' },
+      { name: 'Talut, Jalut & Dawud', pages: [38, 39], icon: '\u{1F451}' },
+      { name: 'Ayat al-Kursi & Ibrahim\u2019s Debates', pages: [40, 41, 42], icon: '\u2B50' },
+      { name: 'Charity & Spending', pages: [43, 44], icon: '\u{1F932}' },
+      { name: 'Riba, Debt & the Closing', pages: [45, 46, 47], icon: '\u{1F54A}\uFE0F' },
     ];
 
     function localDate(d = new Date()) {
@@ -724,7 +724,7 @@
       const log = [...new Set(dailyLog)].sort().reverse();
       if (!log.length) return 0;
       const today = localDate();
-      const yesterday = localDate(new Date(Date.now() - 86400000));
+      const yd = new Date(); yd.setDate(yd.getDate() - 1); const yesterday = localDate(yd);
       if (log[0] !== today && log[0] !== yesterday) return 0;
       let s = 1;
       for (let i = 1; i < log.length; i++) { if (daysBetween(log[i-1], log[i]) === 1) s++; else break; }
@@ -850,7 +850,7 @@
           const log = [...new Set(this.state.dailyLog)].sort().reverse();
           if (!log.length) return 0;
           const today = localDate();
-          const yesterday = localDate(new Date(Date.now() - 86400000));
+          const yd = new Date(); yd.setDate(yd.getDate() - 1); const yesterday = localDate(yd);
           if (log[0] !== today && log[0] !== yesterday) return 0;
           let s = 1;
           for (let i = 1; i < log.length; i++) { if (daysBetween(log[i-1], log[i]) === 1) s++; else break; }
@@ -902,7 +902,8 @@
           const activity = this.state.dailyActivity || {};
           const days = [];
           for (let i = 111; i >= 0; i--) {
-            const d = localDate(new Date(Date.now() - i * 86400000));
+            const dt = new Date(); dt.setDate(dt.getDate() - i);
+            const d = localDate(dt);
             const listens = activity[d]?.listens || 0;
             // 5 tiers: 0=none, 1-5=tier1, 6-10=tier2, 11-15=tier3, 16-20=tier4, 21+=tier5
             const tier = listens === 0 ? 0 : Math.min(5, Math.ceil(listens / 5));
@@ -1158,9 +1159,18 @@
           }
         },
 
+        _updateHash() {
+          const parts = ['p=' + this.selectedIndex];
+          if (this.activeAyahIndex >= 0) {
+            const ayah = this.pageAyahs[this.activeAyahIndex];
+            if (ayah) parts.push('a=' + ayah.n);
+          }
+          history.replaceState(null, '', '#' + parts.join('&'));
+        },
         selectPage(i) {
           this.selectedIndex = i;
           this.state.preferences.lastSelectedIndex = i; this.save();
+          history.replaceState(null, '', '#p=' + i);
           this.isPlaying = false;
           this.audioCurrentTime = 0;
           this.audioDuration = 0;
@@ -1223,6 +1233,7 @@
           const idx = this.activeAyahIndex;
           if (idx !== this._lastActiveAyah && idx >= 0) {
             this._lastActiveAyah = idx;
+            this._updateHash();
             if (this.viewMode === 'live') {
               const ayah = this.pageAyahs[idx];
               if (ayah) {
@@ -1255,6 +1266,7 @@
           this.audioCurrentTime = v;
         },
         onSeekCommit(event) {
+          if (!this.selectedPage) return;
           const v = parseFloat(event.target.value);
           const a = this.$refs.audio;
           this.audioCurrentTime = v;
@@ -1279,7 +1291,7 @@
             this.state.dailyActivity[today].seconds += Math.round(this.audioDuration || 0);
             this.save();
           }
-          if (this.looping) { this.$refs.audio.currentTime = 0; this.$refs.audio.play(); return; }
+          if (this.looping) { this.$refs.audio.currentTime = 0; this.audioCurrentTime = 0; this.$refs.audio.play(); this.logToday(); return; }
           this.isPlaying = false;
         },
         cycleSpeed() {
@@ -1443,9 +1455,25 @@
           window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); this.deferredPrompt = e; });
           window.addEventListener('appinstalled', () => { this.isInstalled = true; });
           if (navigator.storage?.persist) navigator.storage.persist();
-          // Restore last page or current week
-          const lastIdx = this.state.preferences.lastSelectedIndex;
-          this.selectPage(lastIdx !== null && lastIdx >= 0 && lastIdx < 48 ? lastIdx : this.currentWeek - 1);
+          // Restore from URL hash, saved preference, or current week
+          const hash = window.location.hash;
+          let startPage = this.currentWeek - 1;
+          let startAyah = null;
+          if (hash && !hash.startsWith('#buddy/')) {
+            const params = new URLSearchParams(hash.slice(1));
+            const hp = parseInt(params.get('p'));
+            if (!isNaN(hp) && hp >= 0 && hp < 48) startPage = hp;
+            const ha = parseInt(params.get('a'));
+            if (!isNaN(ha)) startAyah = ha;
+          } else {
+            const lastIdx = this.state.preferences.lastSelectedIndex;
+            if (lastIdx !== null && lastIdx >= 0 && lastIdx < 48) startPage = lastIdx;
+          }
+          this.selectPage(startPage);
+          if (startAyah !== null) {
+            const ayah = this.pageAyahs.find(a => a.n === startAyah);
+            if (ayah) this.$nextTick(() => this.seekToAyah(ayah.start));
+          }
           // Year anniversary check
           const daysSinceStart = daysBetween(localDate(), this.state.startDate);
           if (daysSinceStart >= 365 && this.state.dailyLog.length > 30 && !this.state.anniversaryShown) {
